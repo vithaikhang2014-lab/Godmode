@@ -7,7 +7,7 @@ gui.Parent = player:WaitForChild("PlayerGui")
 
 -- Khung chính
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 200, 0, 45) -- Thu nhỏ mặc định
+frame.Size = UDim2.new(0, 200, 0, 45)
 frame.Position = UDim2.new(0.5, -100, 0.5, -150)
 frame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 frame.BackgroundTransparency = 0.05
@@ -20,13 +20,12 @@ local corner = Instance.new("UICorner")
 corner.CornerRadius = UDim.new(0, 12)
 corner.Parent = frame
 
--- Viền sáng
 local stroke = Instance.new("UIStroke")
 stroke.Color = Color3.fromRGB(255, 100, 100)
 stroke.Thickness = 1
 stroke.Parent = frame
 
--- Tiêu đề + thanh kéo
+-- Tiêu đề
 local titleBar = Instance.new("Frame")
 titleBar.Size = UDim2.new(1, 0, 0, 30)
 titleBar.Position = UDim2.new(0, 0, 0, 0)
@@ -50,7 +49,6 @@ title.TextSize = 13
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.Parent = titleBar
 
--- Nút thu gọn
 local toggleBtn = Instance.new("TextButton")
 toggleBtn.Size = UDim2.new(0, 24, 0, 24)
 toggleBtn.Position = UDim2.new(1, -28, 0, 3)
@@ -65,7 +63,7 @@ local toggleCorner = Instance.new("UICorner")
 toggleCorner.CornerRadius = UDim.new(1, 0)
 toggleCorner.Parent = toggleBtn
 
--- ScrollFrame cho các nút (cuộn được nếu nhiều)
+-- ScrollFrame
 local scrollFrame = Instance.new("ScrollingFrame")
 scrollFrame.Size = UDim2.new(1, -10, 0, 0)
 scrollFrame.Position = UDim2.new(0, 5, 0, 35)
@@ -81,7 +79,7 @@ listLayout.Padding = UDim.new(0, 6)
 listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 listLayout.Parent = scrollFrame
 
--- Hàm tạo nút đẹp
+-- Hàm tạo nút
 local function createNiceButton(name, text, icon, color)
     local btn = Instance.new("TextButton")
     btn.Name = name
@@ -99,7 +97,6 @@ local function createNiceButton(name, text, icon, color)
     btnCorner.CornerRadius = UDim.new(0, 8)
     btnCorner.Parent = btn
     
-    -- Hover
     btn.MouseEnter:Connect(function()
         btn.BackgroundTransparency = 0
     end)
@@ -110,16 +107,147 @@ local function createNiceButton(name, text, icon, color)
     return btn
 end
 
--- Biến trạng thái
+-- ========== BIẾN TOÀN CỤC ==========
 local godmode = false
 local noclip = false
 local fly = false
 local flySpeed = 60
 local expanded = true
-local currentHumanoid = nil
-local flyParts = {}
 
--- ========== XỬ LÝ RESPAWN ==========
+-- ========== GODMODE FIXED ==========
+local godmodeBtn = createNiceButton("Godmode", "GODMODE", "🛡️", Color3.fromRGB(80, 40, 40))
+local godmodeConnections = {} -- Chứa tất cả connection để dễ quản lý
+local godmodeActive = false
+
+-- Hàm dọn dẹp tất cả connection cũ
+local function cleanupGodmodeConnections()
+    for _, conn in pairs(godmodeConnections) do
+        if conn then
+            pcall(function() conn:Disconnect() end)
+        end
+    end
+    godmodeConnections = {}
+end
+
+-- Hàm bảo vệ nhân vật (chính)
+local function protectCharacter(character)
+    if not character or not godmodeActive then return end
+    
+    local humanoid = character:FindFirstChild("Humanoid")
+    if not humanoid then return end
+    
+    local maxHealth = humanoid.MaxHealth
+    
+    -- Đặt máu về max ngay lập tức
+    humanoid.Health = maxHealth
+    
+    -- 1. Bảo vệ khi máu thay đổi
+    local healthConn = humanoid:GetPropertyChangedSignal("Health"):Connect(function()
+        if godmodeActive and humanoid and humanoid.Parent then
+            if humanoid.Health ~= maxHealth then
+                humanoid.Health = maxHealth
+            end
+        end
+    end)
+    table.insert(godmodeConnections, healthConn)
+    
+    -- 2. Chống chết (kiểm tra mỗi frame)
+    local heartbeatConn = game:GetService("RunService").Heartbeat:Connect(function()
+        if godmodeActive and humanoid and humanoid.Parent then
+            if humanoid.Health <= 0 or humanoid.Health ~= maxHealth then
+                humanoid.Health = maxHealth
+            end
+            -- Ngăn trạng thái chết
+            if humanoid:GetState() == Enum.HumanoidStateType.Dead then
+                humanoid.Health = maxHealth
+                humanoid:ChangeState(Enum.HumanoidStateType.Running)
+            end
+        end
+    end)
+    table.insert(godmodeConnections, heartbeatConn)
+    
+    -- 3. Chống đổi trạng thái chết
+    local stateConn = humanoid.StateChanged:Connect(function(oldState, newState)
+        if godmodeActive and humanoid and humanoid.Parent then
+            if newState == Enum.HumanoidStateType.Dead then
+                humanoid.Health = maxHealth
+                humanoid:ChangeState(Enum.HumanoidStateType.Running)
+            end
+            -- Chống ragdoll
+            if newState == Enum.HumanoidStateType.Ragdoll then
+                humanoid:ChangeState(Enum.HumanoidStateType.Running)
+            end
+        end
+    end)
+    table.insert(godmodeConnections, stateConn)
+    
+    -- 4. Chống break joints
+    local breakConn = humanoid.BreakJointsOnDeath:GetPropertyChangedSignal("Value"):Connect(function()
+        if godmodeActive then
+            humanoid.BreakJointsOnDeath = false
+        end
+    end)
+    table.insert(godmodeConnections, breakConn)
+end
+
+-- Bật Godmode
+local function enableGodmode()
+    if godmodeActive then return end
+    
+    godmode = true
+    godmodeActive = true
+    
+    -- Dọn dẹp connection cũ
+    cleanupGodmodeConnections()
+    
+    -- Bảo vệ nhân vật hiện tại
+    local character = player.Character
+    if character then
+        protectCharacter(character)
+    end
+    
+    -- Cập nhật UI
+    godmodeBtn.Text = "🛡️ GODMODE ON"
+    godmodeBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
+    
+    print("✅ GODMODE ĐÃ BẬT - Bạn bất tử!")
+end
+
+-- Tắt Godmode
+local function disableGodmode()
+    if not godmodeActive then return end
+    
+    godmode = false
+    godmodeActive = false
+    
+    -- Xóa tất cả connection
+    cleanupGodmodeConnections()
+    
+    -- Khôi phục máu bình thường (không can thiệp nữa)
+    local character = player.Character
+    local humanoid = character and character:FindFirstChild("Humanoid")
+    if humanoid and humanoid.Health <= 0 then
+        humanoid.Health = 100 -- Hồi sinh 1 tí nếu đang chết
+    end
+    
+    -- Cập nhật UI
+    godmodeBtn.Text = "🛡️ GODMODE OFF"
+    godmodeBtn.BackgroundColor3 = Color3.fromRGB(80, 40, 40)
+    
+    print("❌ GODMODE ĐÃ TẮT")
+end
+
+-- Xử lý bấm nút
+godmodeBtn.MouseButton1Click:Connect(function()
+    if godmodeActive then
+        disableGodmode()
+    else
+        enableGodmode()
+    end
+end)
+
+-- ========== CÁC CHỨC NĂNG KHÁC ==========
+
 local function getHumanoid()
     if player.Character and player.Character:FindFirstChild("Humanoid") then
         return player.Character.Humanoid
@@ -127,62 +255,9 @@ local function getHumanoid()
     return nil
 end
 
--- ========== 1. GODMODE ==========
-local godmodeBtn = createNiceButton("Godmode", "GODMODE", "🛡️", Color3.fromRGB(80, 40, 40))
-local healthConn, heartbeatConn, stateConn
-
-local function disableGodmode()
-    if not godmode then return end
-    godmode = false
-    if healthConn then healthConn:Disconnect() healthConn = nil end
-    if heartbeatConn then heartbeatConn:Disconnect() heartbeatConn = nil end
-    if stateConn then stateConn:Disconnect() stateConn = nil end
-    godmodeBtn.Text = "🛡️ GODMODE OFF"
-    godmodeBtn.BackgroundColor3 = Color3.fromRGB(80, 40, 40)
-end
-
-local function enableGodmode()
-    if godmode then return end
-    currentHumanoid = getHumanoid()
-    if not currentHumanoid then return end
-    godmode = true
-    local maxHealth = currentHumanoid.MaxHealth
-    currentHumanoid.Health = maxHealth
-    
-    disableGodmode() -- clear cũ
-    
-    healthConn = currentHumanoid:GetPropertyChangedSignal("Health"):Connect(function()
-        if godmode and currentHumanoid and currentHumanoid.Parent and currentHumanoid.Health < maxHealth then
-            currentHumanoid.Health = maxHealth
-        end
-    end)
-    
-    heartbeatConn = game:GetService("RunService").Heartbeat:Connect(function()
-        if godmode and currentHumanoid and currentHumanoid.Parent then
-            if currentHumanoid.Health <= 0 or currentHumanoid.Health < maxHealth then
-                currentHumanoid.Health = maxHealth
-            end
-        end
-    end)
-    
-    stateConn = currentHumanoid.StateChanged:Connect(function(_, newState)
-        if godmode and currentHumanoid and currentHumanoid.Parent and newState == Enum.HumanoidStateType.Dead then
-            currentHumanoid.Health = maxHealth
-            currentHumanoid:ChangeState(Enum.HumanoidStateType.Running)
-        end
-    end)
-    
-    godmodeBtn.Text = "🛡️ GODMODE ON"
-    godmodeBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
-end
-
-godmodeBtn.MouseButton1Click:Connect(function()
-    if godmode then disableGodmode() else enableGodmode() end
-end)
-
--- ========== 2. NOCLIP ==========
+-- 2. NOCLIP
 local noclipBtn = createNiceButton("Noclip", "NOCLIP", "🚪", Color3.fromRGB(40, 40, 80))
-local noclipConn
+local noclipConn = nil
 
 local function noclipFunc()
     if not noclip or not player.Character then return end
@@ -221,7 +296,7 @@ noclipBtn.MouseButton1Click:Connect(function()
     if noclip then disableNoclip() else enableNoclip() end
 end)
 
--- ========== 3. FLY ==========
+-- 3. FLY
 local flyBtn = createNiceButton("Fly", "FLY", "✈️", Color3.fromRGB(40, 80, 40))
 local flyBodyVel, flyBodyGyro, flyConn
 
@@ -284,7 +359,7 @@ flyBtn.MouseButton1Click:Connect(function()
     if fly then disableFly() else enableFly() end
 end)
 
--- ========== 4. SUPER JUMP ==========
+-- 4. SUPER JUMP
 local jumpBtn = createNiceButton("Jump", "SUPER JUMP", "🦘", Color3.fromRGB(80, 80, 40))
 jumpBtn.MouseButton1Click:Connect(function()
     local hum = getHumanoid()
@@ -296,7 +371,7 @@ jumpBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- ========== 5. TELEPORT ==========
+-- 5. TELEPORT
 local tpBtn = createNiceButton("Teleport", "TP TO MOUSE", "📍", Color3.fromRGB(80, 40, 80))
 tpBtn.MouseButton1Click:Connect(function()
     local mouse = player:GetMouse()
@@ -306,7 +381,7 @@ tpBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- ========== 6. SPEED BOOST ==========
+-- 6. SPEED BOOST
 local speedBtn = createNiceButton("Speed", "SPEED BOOST", "⚡", Color3.fromRGB(40, 40, 80))
 speedBtn.MouseButton1Click:Connect(function()
     local hum = getHumanoid()
@@ -318,7 +393,7 @@ speedBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Cập nhật CanvasSize cho ScrollFrame
+-- Cập nhật CanvasSize
 local function updateCanvas()
     task.wait(0.05)
     local totalHeight = listLayout.AbsoluteContentSize.Y
@@ -329,7 +404,7 @@ listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateCanvas)
 task.wait(0.1)
 updateCanvas()
 
--- Thu gọn / Mở rộng
+-- Thu gọn
 local function setExpanded(exp)
     expanded = exp
     if expanded then
@@ -347,21 +422,32 @@ toggleBtn.MouseButton1Click:Connect(function()
     setExpanded(not expanded)
 end)
 
--- Xử lý respawn: tự bật lại godmode & noclip nếu đang bật
-player.CharacterAdded:Connect(function(char)
-    currentHumanoid = char:FindFirstChild("Humanoid")
-    task.wait(0.2)
-    if godmode then
-        enableGodmode()
+-- ========== XỬ LÝ RESPAWN QUAN TRỌNG ==========
+player.CharacterAdded:Connect(function(character)
+    print("Nhân vật mới xuất hiện!")
+    
+    -- Đợi humanoid load
+    repeat task.wait() until character:FindFirstChild("Humanoid")
+    
+    -- Nếu godmode đang bật, bảo vệ nhân vật mới
+    if godmodeActive then
+        print("Tự động bật lại godmode cho nhân vật mới")
+        protectCharacter(character)
     end
+    
+    -- Nếu noclip đang bật, bật lại
     if noclip then
         if noclipConn then noclipConn:Disconnect() end
         noclipConn = game:GetService("RunService").Stepped:Connect(noclipFunc)
     end
+    
+    -- Nếu fly đang bật, tắt nó đi (để an toàn)
     if fly then
         disableFly()
     end
 end)
 
+-- Khởi tạo
 setExpanded(true)
-print("✅ SUPER HUB GỌN GÀ - Sẵn sàng! GUI không mất khi chết.")
+print("✅ SUPER HUB - GODMODE ĐÃ ĐƯỢC FIX HOÀN TOÀN!")
+print("🛡️ Bật lên là bất tử, tắt là hết nhé!")
