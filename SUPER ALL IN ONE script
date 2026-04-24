@@ -1,0 +1,665 @@
+-- ========== SUPER HUB ULTIMATE ==========
+local player = game:GetService("Players").LocalPlayer
+local userInput = game:GetService("UserInputService")
+local runService = game:GetService("RunService")
+local gui = Instance.new("ScreenGui")
+gui.Name = "SuperGUI"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+-- KHUNG CHÍNH
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 240, 0, 45)
+frame.Position = UDim2.new(0.5, -120, 0.5, -200)
+frame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+frame.BackgroundTransparency = 0.05
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
+frame.Parent = gui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 12)
+corner.Parent = frame
+
+-- VIỀN CẦU VỒNG
+local rainbowStroke = Instance.new("UIStroke")
+rainbowStroke.Thickness = 2
+rainbowStroke.Parent = frame
+
+local hue = 0
+runService.Heartbeat:Connect(function()
+    hue = (hue + 0.005) % 1
+    rainbowStroke.Color = Color3.fromHSV(hue, 1, 1)
+end)
+
+-- TIÊU ĐỀ
+local titleBar = Instance.new("Frame")
+titleBar.Size = UDim2.new(1, 0, 0, 35)
+titleBar.Position = UDim2.new(0, 0, 0, 0)
+titleBar.BackgroundColor3 = Color3.fromRGB(35, 35, 42)
+titleBar.BackgroundTransparency = 0.1
+titleBar.BorderSizePixel = 0
+titleBar.Parent = frame
+
+local titleCorner = Instance.new("UICorner")
+titleCorner.CornerRadius = UDim.new(0, 12)
+titleCorner.Parent = titleBar
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -35, 1, 0)
+title.Position = UDim2.new(0, 12, 0, 0)
+title.BackgroundTransparency = 1
+title.Text = "🌈 SUPER HUB ULTIMATE"
+title.TextColor3 = Color3.fromRGB(255, 200, 100)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 13
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = titleBar
+
+-- NÚT THU GỌN (CÓ ANIMATION)
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Size = UDim2.new(0, 26, 0, 26)
+toggleBtn.Position = UDim2.new(1, -32, 0, 4.5)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(55, 55, 65)
+toggleBtn.Text = "▼"
+toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleBtn.TextSize = 14
+toggleBtn.BorderSizePixel = 0
+toggleBtn.Parent = titleBar
+
+local toggleCorner = Instance.new("UICorner")
+toggleCorner.CornerRadius = UDim.new(1, 0)
+toggleCorner.Parent = toggleBtn
+
+-- SCROLL FRAME
+local scrollFrame = Instance.new("ScrollingFrame")
+scrollFrame.Size = UDim2.new(1, -12, 0, 0)
+scrollFrame.Position = UDim2.new(0, 6, 0, 40)
+scrollFrame.BackgroundTransparency = 1
+scrollFrame.BorderSizePixel = 0
+scrollFrame.ScrollBarThickness = 4
+scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 120)
+scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+scrollFrame.Parent = frame
+
+local listLayout = Instance.new("UIListLayout")
+listLayout.Padding = UDim.new(0, 6)
+listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+listLayout.Parent = scrollFrame
+
+-- ========== HÀM TẠO UI ==========
+local function createButton(name, text, icon, color)
+    local btn = Instance.new("TextButton")
+    btn.Name = name
+    btn.Size = UDim2.new(1, -10, 0, 36)
+    btn.BackgroundColor3 = color
+    btn.BackgroundTransparency = 0.15
+    btn.Text = icon .. " " .. text
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.GothamSemibold
+    btn.TextSize = 13
+    btn.BorderSizePixel = 0
+    btn.Parent = scrollFrame
+    
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0, 8)
+    btnCorner.Parent = btn
+    
+    btn.MouseEnter:Connect(function() btn.BackgroundTransparency = 0 end)
+    btn.MouseLeave:Connect(function() btn.BackgroundTransparency = 0.15 end)
+    return btn
+end
+
+local function createSlider(name, text, minVal, maxVal, defaultVal)
+    local container = Instance.new("Frame")
+    container.Size = UDim2.new(1, -10, 0, 55)
+    container.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    container.BackgroundTransparency = 0.3
+    container.BorderSizePixel = 0
+    container.Parent = scrollFrame
+    
+    local containerCorner = Instance.new("UICorner")
+    containerCorner.CornerRadius = UDim.new(0, 8)
+    containerCorner.Parent = container
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 0, 20)
+    label.Position = UDim2.new(0, 8, 0, 4)
+    label.BackgroundTransparency = 1
+    label.Text = text .. ": " .. defaultVal
+    label.TextColor3 = Color3.fromRGB(220, 220, 220)
+    label.Font = Enum.Font.GothamSemibold
+    label.TextSize = 12
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = container
+    
+    local slider = Instance.new("Frame")
+    slider.Size = UDim2.new(1, -16, 0, 4)
+    slider.Position = UDim2.new(0, 8, 0, 30)
+    slider.BackgroundColor3 = Color3.fromRGB(80, 80, 100)
+    slider.BorderSizePixel = 0
+    slider.Parent = container
+    
+    local sliderCorner = Instance.new("UICorner")
+    sliderCorner.CornerRadius = UDim.new(1, 0)
+    sliderCorner.Parent = slider
+    
+    local fill = Instance.new("Frame")
+    fill.Size = UDim2.new((defaultVal - minVal) / (maxVal - minVal), 0, 1, 0)
+    fill.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+    fill.BorderSizePixel = 0
+    fill.Parent = slider
+    
+    local fillCorner = Instance.new("UICorner")
+    fillCorner.CornerRadius = UDim.new(1, 0)
+    fillCorner.Parent = fill
+    
+    local value = defaultVal
+    local dragging = false
+    
+    local function updateSlider(input)
+        local pos = math.clamp((input.Position.X - slider.AbsolutePosition.X) / slider.AbsoluteSize.X, 0, 1)
+        value = minVal + (maxVal - minVal) * pos
+        value = math.floor(value * 10) / 10
+        fill.Size = UDim2.new(pos, 0, 1, 0)
+        label.Text = text .. ": " .. value
+    end
+    
+    slider.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            updateSlider(input)
+        end
+    end)
+    
+    userInput.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+    
+    userInput.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            updateSlider(input)
+        end
+    end)
+    
+    return {container = container, getValue = function() return value end}
+end
+
+local function createTextBox(name, placeholder)
+    local box = Instance.new("TextBox")
+    box.Size = UDim2.new(1, -10, 0, 32)
+    box.PlaceholderText = placeholder
+    box.Text = ""
+    box.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    box.BackgroundTransparency = 0.2
+    box.TextColor3 = Color3.fromRGB(255, 255, 255)
+    box.Font = Enum.Font.GothamSemibold
+    box.TextSize = 13
+    box.BorderSizePixel = 0
+    box.Parent = scrollFrame
+    
+    local boxCorner = Instance.new("UICorner")
+    boxCorner.CornerRadius = UDim.new(0, 8)
+    boxCorner.Parent = box
+    
+    return box
+end
+
+-- ========== BIẾN TRẠNG THÁI ==========
+local godmode = false
+local noclip = false
+local fly = false
+local flySpeed = 60
+local infiniteJump = false
+local tpOnClick = false
+local fakeLag = false
+local jumpPower = 50
+local currentHumanoid = nil
+
+-- ========== GODMODE ==========
+local godmodeBtn = createButton("Godmode", "GODMODE", "🛡️", Color3.fromRGB(80, 40, 40))
+local godmodeActive = false
+local godmodeConnections = {}
+
+local function cleanupGodmode()
+    for _, conn in pairs(godmodeConnections) do
+        pcall(function() conn:Disconnect() end)
+    end
+    godmodeConnections = {}
+end
+
+local function protectCharacter(character)
+    if not character or not godmodeActive then return end
+    local humanoid = character:FindFirstChild("Humanoid")
+    if not humanoid then return end
+    
+    local maxHealth = humanoid.MaxHealth
+    humanoid.Health = maxHealth
+    
+    local healthConn = humanoid:GetPropertyChangedSignal("Health"):Connect(function()
+        if godmodeActive and humanoid and humanoid.Parent and humanoid.Health ~= maxHealth then
+            humanoid.Health = maxHealth
+        end
+    end)
+    table.insert(godmodeConnections, healthConn)
+    
+    local heartbeatConn = runService.Heartbeat:Connect(function()
+        if godmodeActive and humanoid and humanoid.Parent then
+            if humanoid.Health <= 0 or humanoid.Health ~= maxHealth then
+                humanoid.Health = maxHealth
+            end
+            if humanoid:GetState() == Enum.HumanoidStateType.Dead then
+                humanoid.Health = maxHealth
+                humanoid:ChangeState(Enum.HumanoidStateType.Running)
+            end
+        end
+    end)
+    table.insert(godmodeConnections, heartbeatConn)
+end
+
+local function enableGodmode()
+    if godmodeActive then return end
+    godmodeActive = true
+    cleanupGodmode()
+    if player.Character then protectCharacter(player.Character) end
+    godmodeBtn.Text = "🛡️ GODMODE ON"
+    godmodeBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
+end
+
+local function disableGodmode()
+    if not godmodeActive then return end
+    godmodeActive = false
+    cleanupGodmode()
+    godmodeBtn.Text = "🛡️ GODMODE OFF"
+    godmodeBtn.BackgroundColor3 = Color3.fromRGB(80, 40, 40)
+end
+
+godmodeBtn.MouseButton1Click:Connect(function()
+    if godmodeActive then disableGodmode() else enableGodmode() end
+end)
+
+-- ========== NOCLIP ==========
+local noclipBtn = createButton("Noclip", "NOCLIP", "🚪", Color3.fromRGB(40, 40, 80))
+local noclipConn = nil
+
+local function noclipFunc()
+    if not noclip or not player.Character then return end
+    for _, part in pairs(player.Character:GetDescendants()) do
+        if part:IsA("BasePart") and part.CanCollide then
+            part.CanCollide = false
+        end
+    end
+end
+
+local function disableNoclip()
+    if not noclip then return end
+    noclip = false
+    if noclipConn then noclipConn:Disconnect() noclipConn = nil end
+    if player.Character then
+        for _, part in pairs(player.Character:GetDescendants()) do
+            if part:IsA("BasePart") then part.CanCollide = true end
+        end
+    end
+    noclipBtn.Text = "🚪 NOCLIP OFF"
+    noclipBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 80)
+end
+
+local function enableNoclip()
+    if noclip then return end
+    noclip = true
+    if noclipConn then noclipConn:Disconnect() end
+    noclipConn = runService.Stepped:Connect(noclipFunc)
+    noclipBtn.Text = "🚪 NOCLIP ON"
+    noclipBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
+end
+
+noclipBtn.MouseButton1Click:Connect(function()
+    if noclip then disableNoclip() else enableNoclip() end
+end)
+
+-- ========== FLY ==========
+local flyBtn = createButton("Fly", "FLY", "✈️", Color3.fromRGB(40, 80, 40))
+local flyBodyVel, flyBodyGyro, flyConn
+
+local function disableFly()
+    if not fly then return end
+    fly = false
+    if flyBodyVel then flyBodyVel:Destroy() end
+    if flyBodyGyro then flyBodyGyro:Destroy() end
+    if flyConn then flyConn:Disconnect() end
+    local char = player.Character
+    if char and char:FindFirstChild("Humanoid") then
+        char.Humanoid.PlatformStand = false
+    end
+    flyBtn.Text = "✈️ FLY OFF"
+    flyBtn.BackgroundColor3 = Color3.fromRGB(40, 80, 40)
+end
+
+local function enableFly()
+    if fly then return end
+    local char = player.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    
+    fly = true
+    local hrp = char.HumanoidRootPart
+    if char.Humanoid then char.Humanoid.PlatformStand = true end
+    
+    flyBodyVel = Instance.new("BodyVelocity")
+    flyBodyVel.MaxForce = Vector3.new(1, 1, 1) * 100000
+    flyBodyVel.Parent = hrp
+    
+    flyBodyGyro = Instance.new("BodyGyro")
+    flyBodyGyro.MaxTorque = Vector3.new(1, 1, 1) * 100000
+    flyBodyGyro.Parent = hrp
+    
+    flyConn = runService.Heartbeat:Connect(function()
+        if not fly or not hrp or not hrp.Parent then return end
+        local cam = workspace.CurrentCamera
+        local move = Vector3.new(0, 0, 0)
+        if userInput:IsKeyDown(Enum.KeyCode.W) then move = move + cam.CFrame.LookVector end
+        if userInput:IsKeyDown(Enum.KeyCode.S) then move = move - cam.CFrame.LookVector end
+        if userInput:IsKeyDown(Enum.KeyCode.A) then move = move - cam.CFrame.RightVector end
+        if userInput:IsKeyDown(Enum.KeyCode.D) then move = move + cam.CFrame.RightVector end
+        if userInput:IsKeyDown(Enum.KeyCode.Space) then move = move + Vector3.new(0, 1, 0) end
+        if userInput:IsKeyDown(Enum.KeyCode.LeftControl) then move = move - Vector3.new(0, 1, 0) end
+        if move.Magnitude > 0 then move = move.Unit * flySpeed end
+        flyBodyVel.Velocity = move
+        flyBodyGyro.CFrame = cam.CFrame
+    end)
+    
+    flyBtn.Text = "✈️ FLY ON"
+    flyBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+end
+
+flyBtn.MouseButton1Click:Connect(function()
+    if fly then disableFly() else enableFly() end
+end)
+
+-- ========== INFINITE JUMP ==========
+local infiniteJumpBtn = createButton("InfiniteJump", "INFINITE JUMP", "🦘", Color3.fromRGB(80, 80, 40))
+local jumpConn = nil
+
+local function enableInfiniteJump()
+    if infiniteJump then return end
+    infiniteJump = true
+    jumpConn = userInput.JumpRequest:Connect(function()
+        if infiniteJump and player.Character then
+            local hum = player.Character:FindFirstChild("Humanoid")
+            if hum then
+                hum:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
+        end
+    end)
+    infiniteJumpBtn.Text = "🦘 INFINITE JUMP ON"
+    infiniteJumpBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
+end
+
+local function disableInfiniteJump()
+    if not infiniteJump then return end
+    infiniteJump = false
+    if jumpConn then jumpConn:Disconnect() jumpConn = nil end
+    infiniteJumpBtn.Text = "🦘 INFINITE JUMP OFF"
+    infiniteJumpBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 40)
+end
+
+infiniteJumpBtn.MouseButton1Click:Connect(function()
+    if infiniteJump then disableInfiniteJump() else enableInfiniteJump() end
+end)
+
+-- ========== JUMP POWER SLIDER ==========
+local jumpSlider = createSlider("JumpPower", "NHẢY CAO", 30, 200, 50)
+local function updateJumpPower()
+    local hum = player.Character and player.Character:FindFirstChild("Humanoid")
+    if hum then hum.JumpPower = jumpSlider.getValue() end
+end
+JumpPower = jumpSlider.getValue()
+task.spawn(function()
+    while true do
+        task.wait(0.1)
+        if jumpSlider.getValue() ~= JumpPower then
+            JumpPower = jumpSlider.getValue()
+            updateJumpPower()
+        end
+    end
+end)
+
+-- ========== SPEED SLIDER ==========
+local speedSlider = createSlider("WalkSpeed", "TỐC ĐỘ", 16, 200, 16)
+local WalkSpeed = 16
+task.spawn(function()
+    while true do
+        task.wait(0.1)
+        if speedSlider.getValue() ~= WalkSpeed then
+            WalkSpeed = speedSlider.getValue()
+            local hum = player.Character and player.Character:FindFirstChild("Humanoid")
+            if hum then hum.WalkSpeed = WalkSpeed end
+        end
+    end
+end)
+
+-- ========== TP ON CLICK ==========
+local tpOnClickBtn = createButton("TPClick", "TP TO MOUSE", "📍", Color3.fromRGB(80, 40, 80))
+local clickConn = nil
+
+local function guiCheck(mouseX, mouseY)
+    local guiPos = frame.AbsolutePosition
+    local guiSize = frame.AbsoluteSize
+    return (mouseX >= guiPos.X and mouseX <= guiPos.X + guiSize.X and
+            mouseY >= guiPos.Y and mouseY <= guiPos.Y + guiSize.Y)
+end
+
+local function enableTPClick()
+    if tpOnClick then return end
+    tpOnClick = true
+    clickConn = userInput.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            local mouse = player:GetMouse()
+            if not guiCheck(mouse.X, mouse.Y) then
+                local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                if hrp and mouse.Hit then
+                    hrp.CFrame = CFrame.new(mouse.Hit.Position) + Vector3.new(0, 3, 0)
+                end
+            end
+        end
+    end)
+    tpOnClickBtn.Text = "📍 TP ON (CLICK)"
+    tpOnClickBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
+end
+
+local function disableTPClick()
+    if not tpOnClick then return end
+    tpOnClick = false
+    if clickConn then clickConn:Disconnect() clickConn = nil end
+    tpOnClickBtn.Text = "📍 TP TO MOUSE"
+    tpOnClickBtn.BackgroundColor3 = Color3.fromRGB(80, 40, 80)
+end
+
+tpOnClickBtn.MouseButton1Click:Connect(function()
+    if tpOnClick then disableTPClick() else enableTPClick() end
+end)
+
+-- ========== FAKE LAG ==========
+local fakeLagBtn = createButton("FakeLag", "FAKE LAG", "🐢", Color3.fromRGB(80, 80, 40))
+local lagConn = nil
+
+local function enableFakeLag()
+    if fakeLag then return end
+    fakeLag = true
+    local orgPos = nil
+    lagConn = runService.Heartbeat:Connect(function()
+        if fakeLag and player.Character then
+            local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                if not orgPos then orgPos = hrp.Position end
+                if tick() % 0.3 < 0.15 then
+                    hrp.Position = orgPos
+                else
+                    orgPos = hrp.Position
+                end
+            end
+        end
+    end)
+    fakeLagBtn.Text = "🐢 FAKE LAG ON"
+    fakeLagBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
+end
+
+local function disableFakeLag()
+    if not fakeLag then return end
+    fakeLag = false
+    if lagConn then lagConn:Disconnect() lagConn = nil end
+    fakeLagBtn.Text = "🐢 FAKE LAG"
+    fakeLagBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 40)
+end
+
+fakeLagBtn.MouseButton1Click:Connect(function()
+    if fakeLag then disableFakeLag() else enableFakeLag() end
+end)
+
+-- ========== TP TO PLAYER ==========
+local tpPlayerBox = createTextBox("TPPlayer", "Tên người chơi...")
+tpPlayerBox.Size = UDim2.new(1, -10, 0, 32)
+
+local tpPlayerBtn = createButton("TPPlayerBtn", "DỊCH CHUYỂN ĐẾN", "🎮", Color3.fromRGB(40, 40, 80))
+
+-- Gợi ý người chơi
+local suggestionBox = Instance.new("Frame")
+suggestionBox.Size = UDim2.new(1, -10, 0, 100)
+suggestionBox.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+suggestionBox.BackgroundTransparency = 0.1
+suggestionBox.BorderSizePixel = 0
+suggestionBox.Visible = false
+suggestionBox.Parent = scrollFrame
+
+local suggestionCorner = Instance.new("UICorner")
+suggestionCorner.CornerRadius = UDim.new(0, 8)
+suggestionCorner.Parent = suggestionBox
+
+local suggestionList = Instance.new("ScrollingFrame")
+suggestionList.Size = UDim2.new(1, 0, 1, 0)
+suggestionList.BackgroundTransparency = 1
+suggestionList.BorderSizePixel = 0
+suggestionList.Parent = suggestionBox
+
+local suggestionLayout = Instance.new("UIListLayout")
+suggestionLayout.Padding = UDim.new(0, 4)
+suggestionLayout.Parent = suggestionList
+
+local function updateSuggestions()
+    for _, child in pairs(suggestionList:GetChildren()) do
+        if child:IsA("TextButton") then child:Destroy() end
+    end
+    
+    local search = tpPlayerBox.Text:lower()
+    local players = {}
+    for _, p in pairs(player:GetPlayers()) do
+        if p ~= player and (search == "" or p.Name:lower():find(search)) then
+            table.insert(players, p)
+        end
+    end
+    
+    if #players > 0 then
+        suggestionBox.Visible = true
+        suggestionBox.Size = UDim2.new(1, -10, 0, math.min(#players * 30 + 10, 120))
+        for _, p in pairs(players) do
+            local btn = Instance.new("TextButton")
+            btn.Size = UDim2.new(1, -10, 0, 28)
+            btn.Position = UDim2.new(0, 5, 0, 0)
+            btn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+            btn.Text = p.Name
+            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            btn.Font = Enum.Font.GothamSemibold
+            btn.TextSize = 12
+            btn.BorderSizePixel = 0
+            btn.Parent = suggestionList
+            
+            local btnCorner = Instance.new("UICorner")
+            btnCorner.CornerRadius = UDim.new(0, 6)
+            btnCorner.Parent = btn
+            
+            btn.MouseButton1Click:Connect(function()
+                tpPlayerBox.Text = p.Name
+                suggestionBox.Visible = false
+            end)
+        end
+        suggestionList.CanvasSize = UDim2.new(0, 0, 0, suggestionLayout.AbsoluteContentSize.Y)
+    else
+        suggestionBox.Visible = false
+    end
+end
+
+tpPlayerBox:GetPropertyChangedSignal("Text"):Connect(updateSuggestions)
+tpPlayerBox.Focused:Connect(function() updateSuggestions() end)
+tpPlayerBox.FocusLost:Connect(function() task.wait(0.3) suggestionBox.Visible = false end)
+
+tpPlayerBtn.MouseButton1Click:Connect(function()
+    local targetName = tpPlayerBox.Text
+    for _, p in pairs(player:GetPlayers()) do
+        if p.Name:lower() == targetName:lower() then
+            local targetChar = p.Character
+            if targetChar and targetChar:FindFirstChild("HumanoidRootPart") then
+                local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    hrp.CFrame = targetChar.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0)
+                end
+            end
+            break
+        end
+    end
+end)
+
+-- ========== RESPAWN HANDLER ==========
+player.CharacterAdded:Connect(function(character)
+    repeat task.wait() until character:FindFirstChild("Humanoid")
+    if godmodeActive then protectCharacter(character) end
+    if noclip then
+        if noclipConn then noclipConn:Disconnect() end
+        noclipConn = runService.Stepped:Connect(noclipFunc)
+    end
+    if fly then disableFly() end
+    updateJumpPower()
+    local hum = character:FindFirstChild("Humanoid")
+    if hum then hum.WalkSpeed = WalkSpeed end
+end)
+
+-- ========== ANIMATION THU GỌN ==========
+local expanded = true
+local tweenService = game:GetService("TweenService")
+
+local function setExpanded(exp)
+    expanded = exp
+    local targetHeight = exp and 540 or 45
+    local targetScrollSize = exp and 500 or 0
+    
+    local tween = tweenService:Create(frame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, 240, 0, targetHeight)
+    })
+    tween:Play()
+    
+    local scrollTween = tweenService:Create(scrollFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Size = UDim2.new(1, -12, 0, targetScrollSize)
+    })
+    scrollTween:Play()
+    
+    toggleBtn.Text = exp and "▼" or "▲"
+end
+
+toggleBtn.MouseButton1Click:Connect(function()
+    setExpanded(not expanded)
+end)
+
+-- Cập nhật Canvas
+local function updateCanvas()
+    task.wait(0.1)
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 20)
+end
+
+listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateCanvas)
+task.wait(0.2)
+updateCanvas()
+setExpanded(true)
+
+print("🌈 SUPER HUB ULTIMATE - ĐÃ TẢI THÀNH CÔNG!")
