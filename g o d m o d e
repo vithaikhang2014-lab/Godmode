@@ -1,0 +1,222 @@
+-- Tạo ScreenGui
+local player = game:GetService("Players").LocalPlayer
+local gui = Instance.new("ScreenGui")
+gui.Name = "GodModeGUI"
+gui.Parent = player:WaitForChild("PlayerGui")
+
+-- Tạo khung chính
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 180, 0, 90)
+frame.Position = UDim2.new(0.5, -90, 0.5, -45)
+frame.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+frame.BackgroundTransparency = 0.15
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
+frame.Parent = gui
+
+-- Bo góc cho khung
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 8)
+corner.Parent = frame
+
+-- Tiêu đề
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 25)
+title.Position = UDim2.new(0, 0, 0, 0)
+title.BackgroundTransparency = 1
+title.Text = "✨ GOD MODE ✨"
+title.TextColor3 = Color3.fromRGB(255, 215, 0)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 14
+title.TextScaled = false
+title.Parent = frame
+
+-- Thanh kéo (để dễ kéo hơn)
+local dragBar = Instance.new("TextLabel")
+dragBar.Size = UDim2.new(1, 0, 0, 25)
+dragBar.Position = UDim2.new(0, 0, 0, 0)
+dragBar.BackgroundTransparency = 1
+dragBar.Text = ""
+dragBar.Parent = frame
+
+-- Nút bật/tắt Godmode
+local toggleButton = Instance.new("TextButton")
+toggleButton.Size = UDim2.new(0, 120, 0, 35)
+toggleButton.Position = UDim2.new(0.5, -60, 0.5, -10)
+toggleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+toggleButton.Text = "🔴 GOD MODE OFF"
+toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.Font = Enum.Font.GothamSemibold
+toggleButton.TextSize = 12
+toggleButton.BorderSizePixel = 0
+toggleButton.Parent = frame
+
+-- Bo góc cho nút
+local buttonCorner = Instance.new("UICorner")
+buttonCorner.CornerRadius = UDim.new(0, 5)
+buttonCorner.Parent = toggleButton
+
+-- Hiệu ứng hover cho nút
+local function onHover()
+    toggleButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+end
+
+local function onLeave()
+    if godmode then
+        toggleButton.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
+    else
+        toggleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    end
+end
+
+toggleButton.MouseEnter:Connect(onHover)
+toggleButton.MouseLeave:Connect(onLeave)
+
+-- Biến trạng thái
+local godmode = false
+local humanoid = nil
+local originalHealth = 100
+local connections = {}
+
+-- Hàm lấy Humanoid
+local function getHumanoid()
+    if player.Character and player.Character:FindFirstChild("Humanoid") then
+        return player.Character.Humanoid
+    end
+    return nil
+end
+
+-- Hàm bật Godmode
+local function enableGodMode()
+    if godmode then return end
+    
+    humanoid = getHumanoid()
+    if not humanoid then
+        warn("Không tìm thấy Humanoid!")
+        return
+    end
+    
+    godmode = true
+    
+    -- Lưu máu hiện tại
+    originalHealth = humanoid.Health
+    
+    -- 1. Vô hiệu hóa sát thương
+    local healthConn = humanoid:GetPropertyChangedSignal("Health"):Connect(function()
+        if godmode and humanoid and humanoid.Health < originalHealth then
+            humanoid.Health = originalHealth
+        end
+    end)
+    table.insert(connections, healthConn)
+    
+    -- 2. Chống cháy/đuối nước/độc (nếu có)
+    local breakConn = humanoid.BreakJointsOnDeath:GetPropertyChangedSignal("Value"):Connect(function()
+        if godmode then
+            humanoid.BreakJointsOnDeath = false
+        end
+    end)
+    table.insert(connections, breakConn)
+    
+    -- 3. Tự động hồi máu nếu dưới ngưỡng
+    local autoHealConn = game:GetService("RunService").Heartbeat:Connect(function()
+        if godmode and humanoid and humanoid.Parent then
+            if humanoid.Health < originalHealth then
+                humanoid.Health = originalHealth
+            end
+            -- Ngăn chết do rơi
+            if humanoid.Health <= 0 then
+                humanoid.Health = originalHealth
+            end
+        end
+    end)
+    table.insert(connections, autoHealConn)
+    
+    -- 4. Chống ragdoll/kẹt
+    local stateConn = humanoid.StateChanged:Connect(function(oldState, newState)
+        if godmode and newState == Enum.HumanoidStateType.Dead then
+            humanoid:ChangeState(Enum.HumanoidStateType.Running)
+            humanoid.Health = originalHealth
+        end
+    end)
+    table.insert(connections, stateConn)
+    
+    -- Cập nhật UI
+    toggleButton.Text = "🟢 GOD MODE ON"
+    toggleButton.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
+    title.Text = "✨ GOD MODE: ACTIVE ✨"
+    title.TextColor3 = Color3.fromRGB(0, 255, 0)
+    
+    print("Godmode đã được KÍCH HOẠT! Bạn bất tử!")
+end
+
+-- Hàm tắt Godmode
+local function disableGodMode()
+    if not godmode then return end
+    
+    godmode = false
+    
+    -- Ngắt tất cả kết nối
+    for _, conn in ipairs(connections) do
+        if conn then
+            conn:Disconnect()
+        end
+    end
+    connections = {}
+    
+    -- Cập nhật UI
+    toggleButton.Text = "🔴 GOD MODE OFF"
+    toggleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    title.Text = "✨ GOD MODE ✨"
+    title.TextColor3 = Color3.fromRGB(255, 215, 0)
+    
+    -- Khôi phục máu bình thường nếu còn sống
+    humanoid = getHumanoid()
+    if humanoid and humanoid.Parent then
+        if humanoid.Health <= 0 then
+            humanoid.Health = originalHealth
+        end
+    end
+    
+    print("Godmode đã TẮT")
+end
+
+-- Xử lý nhấn nút
+toggleButton.MouseButton1Click:Connect(function()
+    if godmode then
+        disableGodMode()
+    else
+        enableGodMode()
+    end
+end)
+
+-- Xử lý khi nhân vật mới xuất hiện (respawn)
+player.CharacterAdded:Connect(function(character)
+    -- Đợi Humanoid xuất hiện
+    repeat task.wait() until character:FindFirstChild("Humanoid")
+    
+    humanoid = character.Humanoid
+    originalHealth = humanoid.Health
+    
+    -- Nếu godmode đang bật, tự động bật lại
+    if godmode then
+        -- Tắt cũ trước
+        for _, conn in ipairs(connections) do
+            if conn then conn:Disconnect() end
+        end
+        connections = {}
+        
+        -- Bật lại
+        enableGodMode()
+    end
+end)
+
+-- Xử lý khi rời game (dọn dẹp)
+player:GetPropertyChangedSignal("Character"):Connect(function()
+    if not player.Character and godmode then
+        -- Nếu nhân vật bị xóa mà godmode đang bật, chờ respawn
+        print("Đợi respawn để kích hoạt lại Godmode...")
+    end
+end)
+
+print("Godmode GUI đã tải thành công! Nhấn nút để bất tử!")
