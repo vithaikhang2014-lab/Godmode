@@ -7,8 +7,8 @@ gui.Parent = player:WaitForChild("PlayerGui")
 
 -- Khung chính
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 200, 0, 45)
-frame.Position = UDim2.new(0.5, -100, 0.5, -150)
+frame.Size = UDim2.new(0, 240, 0, 45)
+frame.Position = UDim2.new(0.5, -120, 0.5, -200)
 frame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 frame.BackgroundTransparency = 0.05
 frame.BorderSizePixel = 0
@@ -42,7 +42,7 @@ local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, -30, 1, 0)
 title.Position = UDim2.new(0, 10, 0, 0)
 title.BackgroundTransparency = 1
-title.Text = "⭐ SUPER HUB"
+title.Text = "⭐ SUPER HUB PRO"
 title.TextColor3 = Color3.fromRGB(255, 200, 100)
 title.Font = Enum.Font.GothamBold
 title.TextSize = 13
@@ -79,8 +79,19 @@ listLayout.Padding = UDim.new(0, 6)
 listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 listLayout.Parent = scrollFrame
 
--- Hàm tạo nút
-local function createNiceButton(name, text, icon, color)
+-- ========== BIẾN TOÀN CỤC ==========
+local godmode = false
+local noclip = false
+local fly = false
+local flySpeed = 60
+local infiniteJump = false
+local tpOnClick = false
+local customWalkSpeed = 16
+local customJumpPower = 50
+local expanded = true
+
+-- ========== HÀM TẠO NÚT & TEXTBOX ==========
+local function createButton(name, text, icon, color)
     local btn = Instance.new("TextButton")
     btn.Name = name
     btn.Size = UDim2.new(1, -10, 0, 36)
@@ -107,57 +118,126 @@ local function createNiceButton(name, text, icon, color)
     return btn
 end
 
--- ========== BIẾN TOÀN CỤC ==========
-local godmode = false
-local noclip = false
-local fly = false
-local flySpeed = 60
-local expanded = true
+local function createSlider(parent, name, min, max, default, yPos)
+    local container = Instance.new("Frame")
+    container.Name = name .. "Container"
+    container.Size = UDim2.new(1, -10, 0, 50)
+    container.Position = UDim2.new(0, 0, 0, yPos)
+    container.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+    container.BackgroundTransparency = 0.3
+    container.BorderSizePixel = 0
+    container.Parent = parent
+    
+    local containerCorner = Instance.new("UICorner")
+    containerCorner.CornerRadius = UDim.new(0, 6)
+    containerCorner.Parent = container
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 0, 20)
+    label.Position = UDim2.new(0, 5, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = name .. ": " .. tostring(default)
+    label.TextColor3 = Color3.fromRGB(200, 200, 200)
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 11
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = container
+    
+    local slider = Instance.new("Frame")
+    slider.Size = UDim2.new(0.8, 0, 0, 3)
+    slider.Position = UDim2.new(0.5, -120, 0, 25)
+    slider.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
+    slider.BorderSizePixel = 0
+    slider.Parent = container
+    
+    local fill = Instance.new("Frame")
+    fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+    fill.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+    fill.BorderSizePixel = 0
+    fill.Parent = slider
+    
+    local value = default
+    local dragging = false
+    
+    local function updateValue(x)
+        local pos = math.clamp((x - slider.AbsolutePosition.X) / slider.AbsoluteSize.X, 0, 1)
+        value = min + (max - min) * pos
+        value = math.floor(value)
+        fill.Size = UDim2.new(pos, 0, 1, 0)
+        label.Text = name .. ": " .. tostring(value)
+        return value
+    end
+    
+    slider.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            local v = updateValue(input.Position.X)
+            if name == "Tốc độ chạy" then customWalkSpeed = v
+            elseif name == "Độ cao nhảy" then customJumpPower = v end
+        end
+    end)
+    
+    slider.InputEnded:Connect(function()
+        dragging = false
+    end)
+    
+    game:GetService("UserInputService").InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local v = updateValue(input.Position.X)
+            if name == "Tốc độ chạy" then customWalkSpeed = v
+            elseif name == "Độ cao nhảy" then customJumpPower = v end
+            
+            local hum = getHumanoid()
+            if hum and not fly then
+                hum.WalkSpeed = customWalkSpeed
+                hum.JumpPower = customJumpPower
+            end
+        end
+    end)
+    
+    return container
+end
 
--- ========== GODMODE FIXED ==========
-local godmodeBtn = createNiceButton("Godmode", "GODMODE", "🛡️", Color3.fromRGB(80, 40, 40))
-local godmodeConnections = {} -- Chứa tất cả connection để dễ quản lý
+-- ========== HÀM LẤY HUMANOID ==========
+local function getHumanoid()
+    if player.Character and player.Character:FindFirstChild("Humanoid") then
+        return player.Character.Humanoid
+    end
+    return nil
+end
+
+-- ========== 1. GODMODE ==========
+local godmodeBtn = createButton("Godmode", "GODMODE", "🛡️", Color3.fromRGB(80, 40, 40))
+local godmodeConnections = {}
 local godmodeActive = false
 
--- Hàm dọn dẹp tất cả connection cũ
 local function cleanupGodmodeConnections()
     for _, conn in pairs(godmodeConnections) do
-        if conn then
-            pcall(function() conn:Disconnect() end)
-        end
+        pcall(function() conn:Disconnect() end)
     end
     godmodeConnections = {}
 end
 
--- Hàm bảo vệ nhân vật (chính)
 local function protectCharacter(character)
     if not character or not godmodeActive then return end
-    
     local humanoid = character:FindFirstChild("Humanoid")
     if not humanoid then return end
     
     local maxHealth = humanoid.MaxHealth
-    
-    -- Đặt máu về max ngay lập tức
     humanoid.Health = maxHealth
     
-    -- 1. Bảo vệ khi máu thay đổi
     local healthConn = humanoid:GetPropertyChangedSignal("Health"):Connect(function()
-        if godmodeActive and humanoid and humanoid.Parent then
-            if humanoid.Health ~= maxHealth then
-                humanoid.Health = maxHealth
-            end
+        if godmodeActive and humanoid and humanoid.Parent and humanoid.Health ~= maxHealth then
+            humanoid.Health = maxHealth
         end
     end)
     table.insert(godmodeConnections, healthConn)
     
-    -- 2. Chống chết (kiểm tra mỗi frame)
     local heartbeatConn = game:GetService("RunService").Heartbeat:Connect(function()
         if godmodeActive and humanoid and humanoid.Parent then
             if humanoid.Health <= 0 or humanoid.Health ~= maxHealth then
                 humanoid.Health = maxHealth
             end
-            -- Ngăn trạng thái chết
             if humanoid:GetState() == Enum.HumanoidStateType.Dead then
                 humanoid.Health = maxHealth
                 humanoid:ChangeState(Enum.HumanoidStateType.Running)
@@ -166,97 +246,42 @@ local function protectCharacter(character)
     end)
     table.insert(godmodeConnections, heartbeatConn)
     
-    -- 3. Chống đổi trạng thái chết
-    local stateConn = humanoid.StateChanged:Connect(function(oldState, newState)
+    local stateConn = humanoid.StateChanged:Connect(function(_, newState)
         if godmodeActive and humanoid and humanoid.Parent then
-            if newState == Enum.HumanoidStateType.Dead then
+            if newState == Enum.HumanoidStateType.Dead or newState == Enum.HumanoidStateType.Ragdoll then
                 humanoid.Health = maxHealth
-                humanoid:ChangeState(Enum.HumanoidStateType.Running)
-            end
-            -- Chống ragdoll
-            if newState == Enum.HumanoidStateType.Ragdoll then
                 humanoid:ChangeState(Enum.HumanoidStateType.Running)
             end
         end
     end)
     table.insert(godmodeConnections, stateConn)
-    
-    -- 4. Chống break joints
-    local breakConn = humanoid.BreakJointsOnDeath:GetPropertyChangedSignal("Value"):Connect(function()
-        if godmodeActive then
-            humanoid.BreakJointsOnDeath = false
-        end
-    end)
-    table.insert(godmodeConnections, breakConn)
 end
 
--- Bật Godmode
 local function enableGodmode()
     if godmodeActive then return end
-    
     godmode = true
     godmodeActive = true
-    
-    -- Dọn dẹp connection cũ
     cleanupGodmodeConnections()
-    
-    -- Bảo vệ nhân vật hiện tại
-    local character = player.Character
-    if character then
-        protectCharacter(character)
-    end
-    
-    -- Cập nhật UI
+    if player.Character then protectCharacter(player.Character) end
     godmodeBtn.Text = "🛡️ GODMODE ON"
     godmodeBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
-    
-    print("✅ GODMODE ĐÃ BẬT - Bạn bất tử!")
 end
 
--- Tắt Godmode
 local function disableGodmode()
     if not godmodeActive then return end
-    
     godmode = false
     godmodeActive = false
-    
-    -- Xóa tất cả connection
     cleanupGodmodeConnections()
-    
-    -- Khôi phục máu bình thường (không can thiệp nữa)
-    local character = player.Character
-    local humanoid = character and character:FindFirstChild("Humanoid")
-    if humanoid and humanoid.Health <= 0 then
-        humanoid.Health = 100 -- Hồi sinh 1 tí nếu đang chết
-    end
-    
-    -- Cập nhật UI
     godmodeBtn.Text = "🛡️ GODMODE OFF"
     godmodeBtn.BackgroundColor3 = Color3.fromRGB(80, 40, 40)
-    
-    print("❌ GODMODE ĐÃ TẮT")
 end
 
--- Xử lý bấm nút
 godmodeBtn.MouseButton1Click:Connect(function()
-    if godmodeActive then
-        disableGodmode()
-    else
-        enableGodmode()
-    end
+    if godmodeActive then disableGodmode() else enableGodmode() end
 end)
 
--- ========== CÁC CHỨC NĂNG KHÁC ==========
-
-local function getHumanoid()
-    if player.Character and player.Character:FindFirstChild("Humanoid") then
-        return player.Character.Humanoid
-    end
-    return nil
-end
-
--- 2. NOCLIP
-local noclipBtn = createNiceButton("Noclip", "NOCLIP", "🚪", Color3.fromRGB(40, 40, 80))
+-- ========== 2. NOCLIP ==========
+local noclipBtn = createButton("Noclip", "NOCLIP", "🚪", Color3.fromRGB(40, 40, 80))
 local noclipConn = nil
 
 local function noclipFunc()
@@ -274,9 +299,7 @@ local function disableNoclip()
     if noclipConn then noclipConn:Disconnect() noclipConn = nil end
     if player.Character then
         for _, part in pairs(player.Character:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = true
-            end
+            if part:IsA("BasePart") then part.CanCollide = true end
         end
     end
     noclipBtn.Text = "🚪 NOCLIP OFF"
@@ -296,8 +319,8 @@ noclipBtn.MouseButton1Click:Connect(function()
     if noclip then disableNoclip() else enableNoclip() end
 end)
 
--- 3. FLY
-local flyBtn = createNiceButton("Fly", "FLY", "✈️", Color3.fromRGB(40, 80, 40))
+-- ========== 3. FLY ==========
+local flyBtn = createButton("Fly", "FLY", "✈️", Color3.fromRGB(40, 80, 40))
 local flyBodyVel, flyBodyGyro, flyConn
 
 local function disableFly()
@@ -309,6 +332,7 @@ local function disableFly()
     local char = player.Character
     if char and char:FindFirstChild("Humanoid") then
         char.Humanoid.PlatformStand = false
+        char.Humanoid.WalkSpeed = customWalkSpeed
     end
     flyBtn.Text = "✈️ FLY OFF"
     flyBtn.BackgroundColor3 = Color3.fromRGB(40, 80, 40)
@@ -359,41 +383,98 @@ flyBtn.MouseButton1Click:Connect(function()
     if fly then disableFly() else enableFly() end
 end)
 
--- 4. SUPER JUMP
-local jumpBtn = createNiceButton("Jump", "SUPER JUMP", "🦘", Color3.fromRGB(80, 80, 40))
-jumpBtn.MouseButton1Click:Connect(function()
-    local hum = getHumanoid()
-    if hum then
-        hum.JumpPower = 120
-        hum:ChangeState(Enum.HumanoidStateType.Jumping)
-        task.wait(0.15)
-        hum.JumpPower = 50
+-- ========== 4. INFINITE JUMP (ON/OFF) ==========
+local infiniteJumpBtn = createButton("InfiniteJump", "INFINITE JUMP", "🦘", Color3.fromRGB(80, 80, 40))
+
+local function enableInfiniteJump()
+    infiniteJump = true
+    infiniteJumpBtn.Text = "🦘 INFINITE JUMP ON"
+    infiniteJumpBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
+end
+
+local function disableInfiniteJump()
+    infiniteJump = false
+    infiniteJumpBtn.Text = "🦘 INFINITE JUMP OFF"
+    infiniteJumpBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 40)
+end
+
+local jumpConn = nil
+local function setupInfiniteJump()
+    if jumpConn then jumpConn:Disconnect() end
+    jumpConn = game:GetService("UserInputService").JumpRequest:Connect(function()
+        if infiniteJump then
+            local hum = getHumanoid()
+            if hum and hum:GetState() ~= Enum.HumanoidStateType.Jumping then
+                hum:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
+        end
+    end)
+end
+
+infiniteJumpBtn.MouseButton1Click:Connect(function()
+    if infiniteJump then 
+        disableInfiniteJump()
+    else 
+        enableInfiniteJump()
+    end
+end)
+setupInfiniteJump()
+
+-- ========== 5. TP ON CLICK (ON/OFF) ==========
+local tpBtn = createButton("TPClick", "TP ON CLICK", "📍", Color3.fromRGB(80, 40, 80))
+
+local function enableTPClick()
+    tpOnClick = true
+    tpBtn.Text = "📍 TP ON CLICK ON"
+    tpBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
+end
+
+local function disableTPClick()
+    tpOnClick = false
+    tpBtn.Text = "📍 TP ON CLICK OFF"
+    tpBtn.BackgroundColor3 = Color3.fromRGB(80, 40, 80)
+end
+
+local mouse = player:GetMouse()
+mouse.Button1Down:Connect(function()
+    if tpOnClick then
+        -- Kiểm tra nếu chuột không ở trên GUI
+        local target = mouse.Target
+        local isOnGui = false
+        local current = target
+        while current do
+            if current:IsA("GuiObject") and current:FindFirstAncestor("SuperGUI") then
+                isOnGui = true
+                break
+            end
+            current = current.Parent
+        end
+        
+        if not isOnGui then
+            local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+            if hrp and mouse.Hit then
+                hrp.CFrame = CFrame.new(mouse.Hit.Position) + Vector3.new(0, 3, 0)
+            end
+        end
     end
 end)
 
--- 5. TELEPORT
-local tpBtn = createNiceButton("Teleport", "TP TO MOUSE", "📍", Color3.fromRGB(80, 40, 80))
 tpBtn.MouseButton1Click:Connect(function()
-    local mouse = player:GetMouse()
-    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-    if hrp and mouse.Hit then
-        hrp.CFrame = CFrame.new(mouse.Hit.Position) + Vector3.new(0, 3, 0)
-    end
+    if tpOnClick then disableTPClick() else enableTPClick() end
 end)
 
--- 6. SPEED BOOST
-local speedBtn = createNiceButton("Speed", "SPEED BOOST", "⚡", Color3.fromRGB(40, 40, 80))
-speedBtn.MouseButton1Click:Connect(function()
-    local hum = getHumanoid()
-    if hum then
-        local oldSpeed = hum.WalkSpeed
-        hum.WalkSpeed = 90
-        task.wait(5)
-        hum.WalkSpeed = oldSpeed
-    end
-end)
+-- ========== 6. SLIDERS (Speed & Jump Height) ==========
+createSlider(scrollFrame, "Tốc độ chạy", 16, 200, 16, 0)
+createSlider(scrollFrame, "Độ cao nhảy", 50, 200, 50, 0)
 
--- Cập nhật CanvasSize
+-- Áp dụng custom speed/jump cho nhân vật hiện tại
+local hum = getHumanoid()
+if hum then
+    hum.WalkSpeed = customWalkSpeed
+    hum.JumpPower = customJumpPower
+end
+
+-- ========== CẬP NHẬT CANVAS ==========
 local function updateCanvas()
     task.wait(0.05)
     local totalHeight = listLayout.AbsoluteContentSize.Y
@@ -404,16 +485,16 @@ listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateCanvas)
 task.wait(0.1)
 updateCanvas()
 
--- Thu gọn
+-- ========== THU GỌN ==========
 local function setExpanded(exp)
     expanded = exp
     if expanded then
-        scrollFrame.Size = UDim2.new(1, -10, 0, 230)
-        frame.Size = UDim2.new(0, 200, 0, 275)
+        scrollFrame.Size = UDim2.new(1, -10, 0, 380)
+        frame.Size = UDim2.new(0, 240, 0, 430)
         toggleBtn.Text = "▼"
     else
         scrollFrame.Size = UDim2.new(1, -10, 0, 0)
-        frame.Size = UDim2.new(0, 200, 0, 42)
+        frame.Size = UDim2.new(0, 240, 0, 42)
         toggleBtn.Text = "▲"
     end
 end
@@ -422,32 +503,26 @@ toggleBtn.MouseButton1Click:Connect(function()
     setExpanded(not expanded)
 end)
 
--- ========== XỬ LÝ RESPAWN QUAN TRỌNG ==========
+-- ========== RESPAWN HANDLER ==========
 player.CharacterAdded:Connect(function(character)
-    print("Nhân vật mới xuất hiện!")
-    
-    -- Đợi humanoid load
     repeat task.wait() until character:FindFirstChild("Humanoid")
     
-    -- Nếu godmode đang bật, bảo vệ nhân vật mới
-    if godmodeActive then
-        print("Tự động bật lại godmode cho nhân vật mới")
-        protectCharacter(character)
-    end
-    
-    -- Nếu noclip đang bật, bật lại
+    if godmodeActive then protectCharacter(character) end
     if noclip then
         if noclipConn then noclipConn:Disconnect() end
         noclipConn = game:GetService("RunService").Stepped:Connect(noclipFunc)
     end
+    if fly then disableFly() end
     
-    -- Nếu fly đang bật, tắt nó đi (để an toàn)
-    if fly then
-        disableFly()
+    local hum = character:FindFirstChild("Humanoid")
+    if hum then
+        hum.WalkSpeed = customWalkSpeed
+        hum.JumpPower = customJumpPower
     end
 end)
 
 -- Khởi tạo
 setExpanded(true)
-print("✅ SUPER HUB - GODMODE ĐÃ ĐƯỢC FIX HOÀN TOÀN!")
-print("🛡️ Bật lên là bất tử, tắt là hết nhé!")
+print("✅ SUPER HUB PRO - Đã cập nhật đầy đủ tính năng!")
+print("🦘 Infinite Jump: Bật lên là nhảy vô tận!")
+print("📍 TP On Click: Bật lên rồi click chuột vào đâu là dịch chuyển tới đó (trừ GUI)!")
