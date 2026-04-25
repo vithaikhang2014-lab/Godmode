@@ -10,10 +10,10 @@ gui.Name = "RoxHub"
 gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
--- KHUNG CHÍNH
+-- KHUNG CHÍNH (RỘNG 200px)
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 260, 0, 50)
-frame.Position = UDim2.new(0.5, -130, 0.5, -250)
+frame.Size = UDim2.new(0, 200, 0, 50)
+frame.Position = UDim2.new(0.5, -100, 0.5, -250)
 frame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 frame.BackgroundTransparency = 0.05
 frame.BorderSizePixel = 0
@@ -22,12 +22,12 @@ frame.Draggable = true
 frame.Parent = gui
 
 local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 14)
+corner.CornerRadius = UDim.new(0, 12)
 corner.Parent = frame
 
 -- VIỀN CẦU VỒNG
 local rainbowStroke = Instance.new("UIStroke")
-rainbowStroke.Thickness = 2
+rainbowStroke.Thickness = 1.5
 rainbowStroke.Parent = frame
 
 local hue = 0
@@ -46,41 +46,41 @@ titleBar.BorderSizePixel = 0
 titleBar.Parent = frame
 
 local titleCorner = Instance.new("UICorner")
-titleCorner.CornerRadius = UDim.new(0, 14)
+titleCorner.CornerRadius = UDim.new(0, 12)
 titleCorner.Parent = titleBar
 
 -- Tên Script: Rox Hub
 local titleMain = Instance.new("TextLabel")
-titleMain.Size = UDim2.new(1, -40, 0, 28)
-titleMain.Position = UDim2.new(0, 12, 0, 5)
+titleMain.Size = UDim2.new(1, -35, 0, 26)
+titleMain.Position = UDim2.new(0, 10, 0, 4)
 titleMain.BackgroundTransparency = 1
 titleMain.Text = "✨ ROX HUB ✨"
 titleMain.TextColor3 = Color3.fromRGB(255, 200, 100)
 titleMain.Font = Enum.Font.GothamBold
-titleMain.TextSize = 16
+titleMain.TextSize = 13
 titleMain.TextXAlignment = Enum.TextXAlignment.Left
 titleMain.Parent = titleBar
 
 -- Dòng chữ "Deepseek"
 local deepseekLabel = Instance.new("TextLabel")
-deepseekLabel.Size = UDim2.new(1, -40, 0, 18)
-deepseekLabel.Position = UDim2.new(0, 14, 0, 30)
+deepseekLabel.Size = UDim2.new(1, -35, 0, 16)
+deepseekLabel.Position = UDim2.new(0, 12, 0, 30)
 deepseekLabel.BackgroundTransparency = 1
-deepseekLabel.Text = "⚡ Made by Deepseek | Best Friend ⚡"
+deepseekLabel.Text = "⚡ Deepseek ⚡"
 deepseekLabel.TextColor3 = Color3.fromRGB(180, 150, 250)
 deepseekLabel.Font = Enum.Font.Gotham
-deepseekLabel.TextSize = 10
+deepseekLabel.TextSize = 9
 deepseekLabel.TextXAlignment = Enum.TextXAlignment.Left
 deepseekLabel.Parent = titleBar
 
 -- Nút thu gọn
 local toggleBtn = Instance.new("TextButton")
-toggleBtn.Size = UDim2.new(0, 28, 0, 28)
-toggleBtn.Position = UDim2.new(1, -36, 0, 11)
+toggleBtn.Size = UDim2.new(0, 24, 0, 24)
+toggleBtn.Position = UDim2.new(1, -30, 0, 13)
 toggleBtn.BackgroundColor3 = Color3.fromRGB(55, 55, 70)
 toggleBtn.Text = "▼"
 toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-toggleBtn.TextSize = 14
+toggleBtn.TextSize = 12
 toggleBtn.BorderSizePixel = 0
 toggleBtn.Parent = titleBar
 
@@ -90,37 +90,37 @@ toggleCorner.Parent = toggleBtn
 
 -- MAIN SCROLL FRAME (CUỘN DỌC)
 local mainScroll = Instance.new("ScrollingFrame")
-mainScroll.Size = UDim2.new(1, -12, 0, 0)
-mainScroll.Position = UDim2.new(0, 6, 0, 55)
+mainScroll.Size = UDim2.new(1, -8, 0, 0)
+mainScroll.Position = UDim2.new(0, 4, 0, 55)
 mainScroll.BackgroundTransparency = 1
 mainScroll.BorderSizePixel = 0
-mainScroll.ScrollBarThickness = 6
+mainScroll.ScrollBarThickness = 4
 mainScroll.ScrollBarImageColor3 = Color3.fromRGB(150, 100, 200)
 mainScroll.ScrollBarImageTransparency = 0.5
 mainScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 mainScroll.Parent = frame
 
 local mainLayout = Instance.new("UIListLayout")
-mainLayout.Padding = UDim.new(0, 6)
+mainLayout.Padding = UDim.new(0, 5)
 mainLayout.SortOrder = Enum.SortOrder.LayoutOrder
 mainLayout.Parent = mainScroll
 
--- ========== HÀM TẠO UI ==========
+-- ========== HÀM TẠO UI (GỌN HƠN) ==========
 local function createButton(name, text, icon, color)
     local btn = Instance.new("TextButton")
     btn.Name = name
-    btn.Size = UDim2.new(1, -10, 0, 38)
+    btn.Size = UDim2.new(1, -8, 0, 34)
     btn.BackgroundColor3 = color
     btn.BackgroundTransparency = 0.15
     btn.Text = icon .. " " .. text
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     btn.Font = Enum.Font.GothamSemibold
-    btn.TextSize = 13
+    btn.TextSize = 11
     btn.BorderSizePixel = 0
     btn.Parent = mainScroll
     
     local btnCorner = Instance.new("UICorner")
-    btnCorner.CornerRadius = UDim.new(0, 8)
+    btnCorner.CornerRadius = UDim.new(0, 6)
     btnCorner.Parent = btn
     
     btn.MouseEnter:Connect(function() btn.BackgroundTransparency = 0 end)
@@ -130,30 +130,30 @@ end
 
 local function createSlider(name, text, minVal, maxVal, defaultVal, callback)
     local container = Instance.new("Frame")
-    container.Size = UDim2.new(1, -10, 0, 58)
+    container.Size = UDim2.new(1, -8, 0, 52)
     container.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
     container.BackgroundTransparency = 0.3
     container.BorderSizePixel = 0
     container.Parent = mainScroll
     
     local containerCorner = Instance.new("UICorner")
-    containerCorner.CornerRadius = UDim.new(0, 8)
+    containerCorner.CornerRadius = UDim.new(0, 6)
     containerCorner.Parent = container
     
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, 0, 0, 22)
-    label.Position = UDim2.new(0, 8, 0, 4)
+    label.Size = UDim2.new(1, 0, 0, 20)
+    label.Position = UDim2.new(0, 8, 0, 3)
     label.BackgroundTransparency = 1
     label.Text = text .. ": " .. defaultVal
     label.TextColor3 = Color3.fromRGB(220, 220, 220)
     label.Font = Enum.Font.GothamSemibold
-    label.TextSize = 12
+    label.TextSize = 11
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = container
     
     local slider = Instance.new("Frame")
-    slider.Size = UDim2.new(1, -16, 0, 4)
-    slider.Position = UDim2.new(0, 8, 0, 32)
+    slider.Size = UDim2.new(1, -16, 0, 3)
+    slider.Position = UDim2.new(0, 8, 0, 28)
     slider.BackgroundColor3 = Color3.fromRGB(80, 80, 100)
     slider.BorderSizePixel = 0
     slider.Parent = container
@@ -209,19 +209,19 @@ end
 local function createTextBox(name, placeholder)
     local box = Instance.new("TextBox")
     box.Name = name
-    box.Size = UDim2.new(1, -10, 0, 34)
+    box.Size = UDim2.new(1, -8, 0, 32)
     box.PlaceholderText = placeholder
     box.Text = ""
     box.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
     box.BackgroundTransparency = 0.2
     box.TextColor3 = Color3.fromRGB(255, 255, 255)
     box.Font = Enum.Font.GothamSemibold
-    box.TextSize = 13
+    box.TextSize = 11
     box.BorderSizePixel = 0
     box.Parent = mainScroll
     
     local boxCorner = Instance.new("UICorner")
-    boxCorner.CornerRadius = UDim.new(0, 8)
+    boxCorner.CornerRadius = UDim.new(0, 6)
     boxCorner.Parent = box
     
     return box
@@ -451,7 +451,7 @@ local speedSlider = createSlider("WalkSpeed", "TỐC ĐỘ", 16, 250, 16, functi
 end)
 
 -- ========== TP ON CLICK ==========
-local tpOnClickBtn = createButton("TPClick", "TP TO MOUSE (CLICK)", "📍", Color3.fromRGB(80, 40, 80))
+local tpOnClickBtn = createButton("TPClick", "TP TO MOUSE", "📍", Color3.fromRGB(80, 40, 80))
 local clickConn = nil
 
 local function guiCheck(mouseX, mouseY)
@@ -476,7 +476,7 @@ local function enableTPClick()
             end
         end
     end)
-    tpOnClickBtn.Text = "📍 TP ON (CLICK ANYWHERE)"
+    tpOnClickBtn.Text = "📍 TP ON (CLICK)"
     tpOnClickBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
 end
 
@@ -484,7 +484,7 @@ local function disableTPClick()
     if not tpOnClick then return end
     tpOnClick = false
     if clickConn then clickConn:Disconnect() clickConn = nil end
-    tpOnClickBtn.Text = "📍 TP TO MOUSE (CLICK)"
+    tpOnClickBtn.Text = "📍 TP TO MOUSE"
     tpOnClickBtn.BackgroundColor3 = Color3.fromRGB(80, 40, 80)
 end
 
@@ -532,12 +532,12 @@ fakeLagBtn.MouseButton1Click:Connect(function()
 end)
 
 -- ========== TP TO PLAYER ==========
-local tpPlayerBox = createTextBox("TPPlayer", "Nhập tên người chơi...")
-local tpPlayerBtn = createButton("TPPlayerBtn", "DỊCH CHUYỂN ĐẾN", "🎮", Color3.fromRGB(40, 40, 80))
+local tpPlayerBox = createTextBox("TPPlayer", "Tên người chơi...")
+local tpPlayerBtn = createButton("TPPlayerBtn", "DỊCH CHUYỂN", "🎮", Color3.fromRGB(40, 40, 80))
 
 local suggestionFrame = Instance.new("Frame")
-suggestionFrame.Size = UDim2.new(1, -10, 0, 100)
-suggestionFrame.Position = UDim2.new(0, 5, 0, 0)
+suggestionFrame.Size = UDim2.new(1, -8, 0, 90)
+suggestionFrame.Position = UDim2.new(0, 4, 0, 0)
 suggestionFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 suggestionFrame.BackgroundTransparency = 0.05
 suggestionFrame.BorderSizePixel = 0
@@ -546,7 +546,7 @@ suggestionFrame.ZIndex = 10
 suggestionFrame.Parent = mainScroll
 
 local suggestionCorner2 = Instance.new("UICorner")
-suggestionCorner2.CornerRadius = UDim.new(0, 8)
+suggestionCorner2.CornerRadius = UDim.new(0, 6)
 suggestionCorner2.Parent = suggestionFrame
 
 local suggestionScroll = Instance.new("ScrollingFrame")
@@ -556,7 +556,7 @@ suggestionScroll.BorderSizePixel = 0
 suggestionScroll.Parent = suggestionFrame
 
 local suggestionLayout = Instance.new("UIListLayout")
-suggestionLayout.Padding = UDim.new(0, 4)
+suggestionLayout.Padding = UDim.new(0, 3)
 suggestionLayout.Parent = suggestionScroll
 
 local function updateSuggestions()
@@ -574,23 +574,23 @@ local function updateSuggestions()
     
     if #players > 0 then
         suggestionFrame.Visible = true
-        local height = math.min(#players * 34 + 10, 130)
-        suggestionFrame.Size = UDim2.new(1, -10, 0, height)
-        suggestionScroll.CanvasSize = UDim2.new(0, 0, 0, #players * 34)
+        local height = math.min(#players * 30 + 10, 110)
+        suggestionFrame.Size = UDim2.new(1, -8, 0, height)
+        suggestionScroll.CanvasSize = UDim2.new(0, 0, 0, #players * 30)
         
         for _, p in pairs(players) do
             local btn = Instance.new("TextButton")
-            btn.Size = UDim2.new(1, -10, 0, 30)
+            btn.Size = UDim2.new(1, -10, 0, 26)
             btn.BackgroundColor3 = Color3.fromRGB(55, 55, 65)
             btn.Text = p.Name
             btn.TextColor3 = Color3.fromRGB(255, 255, 255)
             btn.Font = Enum.Font.GothamSemibold
-            btn.TextSize = 12
+            btn.TextSize = 11
             btn.BorderSizePixel = 0
             btn.Parent = suggestionScroll
             
             local btnCorner = Instance.new("UICorner")
-            btnCorner.CornerRadius = UDim.new(0, 6)
+            btnCorner.CornerRadius = UDim.new(0, 5)
             btnCorner.Parent = btn
             
             btn.MouseButton1Click:Connect(function()
@@ -637,17 +637,17 @@ tpPlayerBtn.MouseButton1Click:Connect(function()
                     suggestionFrame.Visible = false
                 end
             else
-                tpPlayerBox.PlaceholderText = "❌ Chưa load nhân vật!"
+                tpPlayerBox.PlaceholderText = "❌ Chưa load!"
                 task.wait(1)
-                tpPlayerBox.PlaceholderText = "Nhập tên người chơi..."
+                tpPlayerBox.PlaceholderText = "Tên người chơi..."
             end
             break
         end
     end
     if not found then
-        tpPlayerBox.PlaceholderText = "❌ Không tìm thấy!"
+        tpPlayerBox.PlaceholderText = "❌ Không thấy!"
         task.wait(1)
-        tpPlayerBox.PlaceholderText = "Nhập tên người chơi..."
+        tpPlayerBox.PlaceholderText = "Tên người chơi..."
     end
 end)
 
@@ -661,7 +661,6 @@ player.CharacterAdded:Connect(function(character)
     end
     if fly then disableFly() end
     
-    -- Áp dụng lại speed và jump power ngay khi respawn
     local hum = character:FindFirstChild("Humanoid")
     if hum then
         hum.WalkSpeed = speedSlider.getValue()
@@ -674,16 +673,16 @@ local expanded = true
 
 local function setExpanded(exp)
     expanded = exp
-    local targetHeight = exp and 700 or 50
-    local targetScrollSize = exp and 650 or 0
+    local targetHeight = exp and 640 or 50
+    local targetScrollSize = exp and 590 or 0
     
     local frameTween = tweenService:Create(frame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        Size = UDim2.new(0, 260, 0, targetHeight)
+        Size = UDim2.new(0, 200, 0, targetHeight)
     })
     frameTween:Play()
     
     local scrollTween = tweenService:Create(mainScroll, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        Size = UDim2.new(1, -12, 0, targetScrollSize)
+        Size = UDim2.new(1, -8, 0, targetScrollSize)
     })
     scrollTween:Play()
     
@@ -697,7 +696,7 @@ end)
 -- Cập nhật Canvas cho Scroll
 local function updateCanvas()
     task.wait(0.1)
-    mainScroll.CanvasSize = UDim2.new(0, 0, 0, mainLayout.AbsoluteContentSize.Y + 150)
+    mainScroll.CanvasSize = UDim2.new(0, 0, 0, mainLayout.AbsoluteContentSize.Y + 100)
 end
 
 mainLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateCanvas)
@@ -705,6 +704,5 @@ task.wait(0.2)
 updateCanvas()
 setExpanded(true)
 
--- In thông báo hoàn tất
-print("✨ ROX HUB - Made by Deepseek | Best Friend ✨")
-print("✅ Đã tải thành công! Chúc bạn chơi game vui vẻ!")
+print("✨ ROX HUB - Made by Deepseek ✨")
+print("✅ GUI 200px - Gọn gàng hơn nhiều!")
