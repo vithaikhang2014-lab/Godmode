@@ -10,10 +10,10 @@ gui.Name = "RoxHub"
 gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
--- KHUNG CHÍNH (RỘNG 200px)
+-- KHUNG CHÍNH (RỘNG 200px, CAO VỪA ĐỦ ĐỂ THẤY SCROLL)
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 200, 0, 50)
-frame.Position = UDim2.new(0.5, -100, 0.5, -250)
+frame.Size = UDim2.new(0, 200, 0, 320) -- Cao 320px để thấy khoảng 4-5 nút
+frame.Position = UDim2.new(0.5, -100, 0.5, -160)
 frame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 frame.BackgroundTransparency = 0.05
 frame.BorderSizePixel = 0
@@ -78,7 +78,7 @@ local toggleBtn = Instance.new("TextButton")
 toggleBtn.Size = UDim2.new(0, 24, 0, 24)
 toggleBtn.Position = UDim2.new(1, -30, 0, 13)
 toggleBtn.BackgroundColor3 = Color3.fromRGB(55, 55, 70)
-toggleBtn.Text = "▼"
+toggleBtn.Text = "▲" -- Mặc định thu nhỏ? Không, để mở rộng
 toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 toggleBtn.TextSize = 12
 toggleBtn.BorderSizePixel = 0
@@ -88,15 +88,15 @@ local toggleCorner = Instance.new("UICorner")
 toggleCorner.CornerRadius = UDim.new(1, 0)
 toggleCorner.Parent = toggleBtn
 
--- MAIN SCROLL FRAME (CUỘN DỌC)
+-- MAIN SCROLL FRAME (CUỘN DỌC) - Container cho nội dung
 local mainScroll = Instance.new("ScrollingFrame")
-mainScroll.Size = UDim2.new(1, -8, 0, 0)
+mainScroll.Size = UDim2.new(1, -8, 0, 260) -- Chiều cao vừa đủ
 mainScroll.Position = UDim2.new(0, 4, 0, 55)
 mainScroll.BackgroundTransparency = 1
 mainScroll.BorderSizePixel = 0
 mainScroll.ScrollBarThickness = 4
 mainScroll.ScrollBarImageColor3 = Color3.fromRGB(150, 100, 200)
-mainScroll.ScrollBarImageTransparency = 0.5
+mainScroll.ScrollBarImageTransparency = 0.3
 mainScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 mainScroll.Parent = frame
 
@@ -668,25 +668,36 @@ player.CharacterAdded:Connect(function(character)
     end
 end)
 
--- ========== ANIMATION THU GỌN MƯỢT ==========
+-- ========== THU GỌN/MỞ RỘNG ==========
 local expanded = true
 
 local function setExpanded(exp)
     expanded = exp
-    local targetHeight = exp and 640 or 50
-    local targetScrollSize = exp and 590 or 0
-    
-    local frameTween = tweenService:Create(frame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        Size = UDim2.new(0, 200, 0, targetHeight)
-    })
-    frameTween:Play()
-    
-    local scrollTween = tweenService:Create(mainScroll, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        Size = UDim2.new(1, -8, 0, targetScrollSize)
-    })
-    scrollTween:Play()
-    
-    toggleBtn.Text = exp and "▼" or "▲"
+    if exp then
+        -- Mở rộng: hiện scroll + các nút bên dưới
+        local frameTween = tweenService:Create(frame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, 200, 0, 320)
+        })
+        frameTween:Play()
+        
+        local scrollTween = tweenService:Create(mainScroll, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Size = UDim2.new(1, -8, 0, 260)
+        })
+        scrollTween:Play()
+        toggleBtn.Text = "▲"
+    else
+        -- Thu nhỏ: ẩn scroll, chỉ còn thanh title
+        local frameTween = tweenService:Create(frame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, 200, 0, 50)
+        })
+        frameTween:Play()
+        
+        local scrollTween = tweenService:Create(mainScroll, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Size = UDim2.new(1, -8, 0, 0)
+        })
+        scrollTween:Play()
+        toggleBtn.Text = "▼"
+    end
 end
 
 toggleBtn.MouseButton1Click:Connect(function()
@@ -696,13 +707,13 @@ end)
 -- Cập nhật Canvas cho Scroll
 local function updateCanvas()
     task.wait(0.1)
-    mainScroll.CanvasSize = UDim2.new(0, 0, 0, mainLayout.AbsoluteContentSize.Y + 100)
+    mainScroll.CanvasSize = UDim2.new(0, 0, 0, mainLayout.AbsoluteContentSize.Y + 20)
 end
 
 mainLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateCanvas)
 task.wait(0.2)
 updateCanvas()
-setExpanded(true)
+setExpanded(true) -- Mặc định mở rộng
 
 print("✨ ROX HUB - Made by Deepseek ✨")
-print("✅ GUI 200px - Gọn gàng hơn nhiều!")
+print("✅ GUI 200px - Scroll sẽ hiện khi cuộn xuống dưới!")
