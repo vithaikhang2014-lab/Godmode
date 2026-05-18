@@ -1,0 +1,187 @@
+-- Tạo ScreenGui
+local player = game.Players.LocalPlayer
+local mouse = player:GetMouse()
+local gui = Instance.new("ScreenGui")
+gui.Name = "SnzzHubGUI"
+gui.ResetOnSpawn = false
+player.PlayerGui:Insert(gui)
+
+-- Biến lưu danh sách vị trí
+local savedPositions = {}
+
+-- Tạo Frame chính
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 250, 0, 320)
+mainFrame.Position = UDim2.new(0.5, -125, 0.5, -160)
+mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+mainFrame.BackgroundTransparency = 0.1
+mainFrame.BorderSizePixel = 0
+mainFrame.ClipsDescendants = true
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Parent = gui
+
+-- Bo góc
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 12)
+corner.Parent = mainFrame
+
+-- Frame đổi màu cầu vồng (thanh tiêu đề)
+local rainbowBar = Instance.new("Frame")
+rainbowBar.Size = UDim2.new(1, 0, 0, 40)
+rainbowBar.Position = UDim2.new(0, 0, 0, 0)
+rainbowBar.BorderSizePixel = 0
+rainbowBar.Parent = mainFrame
+
+local barCorner = Instance.new("UICorner")
+barCorner.CornerRadius = UDim.new(0, 12)
+barCorner.Parent = rainbowBar
+
+-- Chữ Snzz HUB
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, 0, 1, 0)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "Snzz HUB"
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.TextScaled = true
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.TextStrokeTransparency = 0.5
+titleLabel.Parent = rainbowBar
+
+-- Hiệu ứng cầu vồng cho thanh tiêu đề
+local hue = 0
+game:GetService("RunService").RenderStepped:Connect(function()
+    hue = (hue + 0.5) % 360
+    local color = Color3.fromHSV(hue / 360, 1, 1)
+    rainbowBar.BackgroundColor3 = color
+end)
+
+-- Chức năng: Lưu vị trí
+local saveBtn = Instance.new("TextButton")
+saveBtn.Size = UDim2.new(0, 200, 0, 40)
+saveBtn.Position = UDim2.new(0.5, -100, 0, 60)
+saveBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+saveBtn.Text = "📌 Lưu vị trí"
+saveBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+saveBtn.Font = Enum.Font.GothamSemibold
+saveBtn.TextSize = 18
+saveBtn.Parent = mainFrame
+
+local btnCorner = Instance.new("UICorner")
+btnCorner.CornerRadius = UDim.new(0, 8)
+btnCorner.Parent = saveBtn
+
+-- Chức năng: Dịch chuyển đến vị trí đã lưu
+local teleportBtn = Instance.new("TextButton")
+teleportBtn.Size = UDim2.new(0, 200, 0, 40)
+teleportBtn.Position = UDim2.new(0.5, -100, 0, 115)
+teleportBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+teleportBtn.Text = "✨ Dịch chuyển"
+teleportBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+teleportBtn.Font = Enum.Font.GothamSemibold
+teleportBtn.TextSize = 18
+teleportBtn.Parent = mainFrame
+
+local teleCorner = Instance.new("UICorner")
+teleCorner.CornerRadius = UDim.new(0, 8)
+teleCorner.Parent = teleportBtn
+
+-- Chức năng: Reset (xóa tất cả vị trí)
+local resetBtn = Instance.new("TextButton")
+resetBtn.Size = UDim2.new(0, 200, 0, 40)
+resetBtn.Position = UDim2.new(0.5, -100, 0, 170)
+resetBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+resetBtn.Text = "🗑️ RESET"
+resetBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+resetBtn.Font = Enum.Font.GothamSemibold
+resetBtn.TextSize = 18
+resetBtn.Parent = mainFrame
+
+local resetCorner = Instance.new("UICorner")
+resetCorner.CornerRadius = UDim.new(0, 8)
+resetCorner.Parent = resetBtn
+
+-- Hiển thị số lần lưu
+local countLabel = Instance.new("TextLabel")
+countLabel.Size = UDim2.new(0, 200, 0, 30)
+countLabel.Position = UDim2.new(0.5, -100, 0, 230)
+countLabel.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+countLabel.Text = "📂 Đã lưu: 0"
+countLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+countLabel.Font = Enum.Font.Gotham
+countLabel.TextSize = 16
+countLabel.Parent = mainFrame
+
+local countCorner = Instance.new("UICorner")
+countCorner.CornerRadius = UDim.new(0, 6)
+countCorner.Parent = countLabel
+
+-- Hàm cập nhật số lượng hiển thị
+local function updateCount()
+    countLabel.Text = "📂 Đã lưu: " .. #savedPositions
+end
+
+-- Hàm hiển thị thông báo góc màn hình
+local function showNotification(msg)
+    local notif = Instance.new("TextLabel")
+    notif.Size = UDim2.new(0, 300, 0, 40)
+    notif.Position = UDim2.new(1, -310, 0, 10)
+    notif.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    notif.BackgroundTransparency = 0.3
+    notif.Text = msg
+    notif.TextColor3 = Color3.fromRGB(255, 200, 100)
+    notif.Font = Enum.Font.Gotham
+    notif.TextSize = 14
+    notif.Parent = gui
+    
+    local notifCorner = Instance.new("UICorner")
+    notifCorner.CornerRadius = UDim.new(0, 8)
+    notifCorner.Parent = notif
+    
+    game:GetService("Debris"):AddItem(notif, 2.5)
+end
+
+-- Sự kiện Lưu vị trí
+saveBtn.MouseButton1Click:Connect(function()
+    local char = player.Character
+    if char and char:FindFirstChild("HumanoidRootPart") then
+        local pos = char.HumanoidRootPart.CFrame
+        table.insert(savedPositions, pos)
+        updateCount()
+        showNotification("✅ Đã lưu vị trí #" .. #savedPositions)
+    else
+        showNotification("⚠️ Không tìm thấy nhân vật!")
+    end
+end)
+
+-- Sự kiện Dịch chuyển
+teleportBtn.MouseButton1Click:Connect(function()
+    if #savedPositions == 0 then
+        showNotification("❌ Vui lòng lưu vị trí ở góc màn hình!")
+        return
+    end
+    
+    local char = player.Character
+    if char and char:FindFirstChild("HumanoidRootPart") then
+        -- Dịch chuyển đến vị trí lưu gần nhất (theo thứ tự mới nhất)
+        local targetPos = savedPositions[#savedPositions]
+        char.HumanoidRootPart.CFrame = targetPos
+        showNotification("✨ Đã dịch chuyển đến vị trí #" .. #savedPositions)
+    else
+        showNotification("⚠️ Không thể dịch chuyển lúc này!")
+    end
+end)
+
+-- Sự kiện Reset
+resetBtn.MouseButton1Click:Connect(function()
+    if #savedPositions > 0 then
+        savedPositions = {}
+        updateCount()
+        showNotification("🗑️ Đã xóa tất cả " .. (#savedPositions) .. " vị trí")
+    else
+        showNotification("📭 Không có vị trí nào để xóa!")
+    end
+end)
+
+-- Ban đầu cập nhật
+updateCount()
