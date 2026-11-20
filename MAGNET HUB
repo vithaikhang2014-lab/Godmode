@@ -1,0 +1,1275 @@
+--[[
+	MAGET HUB - Admin tool (LocalScript / Client)
+	Dat trong: StarterPlayer > StarterPlayerScripts (LocalScript)
+	Key: Magnet
+]]
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
+local CoreGui = game:GetService("CoreGui")
+
+local LocalPlayer = Players.LocalPlayer
+
+------------------------------------------------------------------
+-- CONFIG (chinh cho hop voi game cua ban)
+------------------------------------------------------------------
+local CONFIG = {
+	Key = "Magnet",
+	ShieldRadius = 15,
+	PushMin = 5,
+	PushMax = 10,
+	LootHeight = 4, -- dung tren quang bao nhieu stud
+	-- Prompt nao co ten (cha/ong/to) chua tu khoa nay se duoc tinh la "quang" de loot
+	LootKeywords = { "scrap", "gold", "copper", "diamond", "emerald", "amethyst", "ruby" },
+	LootExclude = { "recycler" },
+}
+
+-- Danh muc nhan dien theo ten
+local CATS = {
+	{ id = "Gold", kw = { "gold" }, color = Color3.fromRGB(255, 215, 0), esp = true },
+	{ id = "Copper", kw = { "copper" }, color = Color3.fromRGB(160, 100, 50), esp = true },
+	{ id = "Diamond", kw = { "diamond" }, color = Color3.fromRGB(0, 170, 255), esp = true },
+	{ id = "Emerald", kw = { "emerald" }, color = Color3.fromRGB(0, 230, 100), esp = true },
+	{ id = "Amethyst", kw = { "amethyst" }, color = Color3.fromRGB(255, 110, 220), esp = true },
+	{ id = "Ruby", kw = { "ruby" }, color = Color3.fromRGB(255, 45, 95), esp = true },
+	{ id = "Monster", kw = { "monster", "jumpscare" }, color = Color3.fromRGB(255, 120, 0), esp = true, modelOnly = true },
+	{ id = "Recycler", kw = { "scrap", "recycler" }, modelOnly = true }, -- "scrap" da bao gom "scraps"
+}
+
+local THEME = {
+	bg = Color3.fromRGB(20, 20, 28),
+	top = Color3.fromRGB(30, 30, 42),
+	row = Color3.fromRGB(32, 32, 44),
+	rowHover = Color3.fromRGB(42, 42, 58),
+	accent = Color3.fromRGB(138, 99, 255),
+	accentHover = Color3.fromRGB(160, 125, 255),
+	off = Color3.fromRGB(64, 64, 82),
+	text = Color3.fromRGB(240, 240, 250),
+	sub = Color3.fromRGB(150, 150, 170),
+	red = Color3.fromRGB(235, 70, 90),
+	redHover = Color3.fromRGB(255, 95, 115),
+	green = Color3.fromRGB(70, 210, 130),
+}
+
+------------------------------------------------------------------
+-- Chay lai script -> tat ban cu
+------------------------------------------------------------------
+if _G.MagetHubClose then
+	pcall(_G.MagetHubClose)
+end
+
+------------------------------------------------------------------
+-- Helpers
+------------------------------------------------------------------
+local function new(class, props, parent)
+	local o = Instance.new(class)
+	for k, v in pairs(props or {}) do
+		o[k] = v
+	end
+	if parent then
+		o.Parent = parent
+	end
+	return o
+end
+
+local function tw(o, t, props, style, dir)
+	local tween = TweenService:Create(o, TweenInfo.new(t, style or Enum.EasingStyle.Quint, dir or Enum.EasingDirection.Out), props)
+	tween:Play()
+	return tween
+end
+
+local function corner(o, r)
+	return new("UICorner", { CornerRadius = UDim.new(0, r) }, o)
+end
+
+local function stroke(o, c, th, tr)
+	return new("UIStroke", { Color = c, Thickness = th or 1, Transparency = tr or 0, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, o)
+end
+
+local function label(parent, props)
+	props.BackgroundTransparency = 1
+	props.Font = props.Font or Enum.Font.GothamMedium
+	props.TextColor3 = props.TextColor3 or THEME.text
+	props.TextSize = props.TextSize or 14
+	return new("TextLabel", props, parent)
+end
+
+local function containsAny(str, list)
+	for _, k in ipairs(list) do
+		if string.find(str, k, 1, true) then
+			return true
+		end
+	end
+	return false
+end
+
+local conns = {}
+local function bind(signal, fn)
+	local c = signal:Connect(fn)
+	conns[#conns + 1] = c
+	return c
+end
+
+local function getHRP()
+	local c = LocalPlayer.Character
+	return c and c:FindFirstChild("HumanoidRootPart")
+end
+
+local function styleButton(btn, base, hover)
+	local sc = new("UIScale", { Scale = 1 }, btn)
+	btn.AutoButtonColor = false
+	btn.MouseEnter:Connect(function()
+		tw(btn, 0.18, { BackgroundColor3 = hover })
+	end)
+	btn.MouseLeave:Connect(function()
+		tw(btn, 0.18, { BackgroundColor3 = base })
+		tw(sc, 0.18, { Scale = 1 })
+	end)
+	btn.MouseButton1Down:Connect(function()
+		tw(sc, 0.1, { Scale = 0.95 })
+	end)
+	btn.MouseButton1Up:Connect(function()
+		tw(sc, 0.3, { Scale = 1 }, Enum.EasingStyle.Back)
+	end)
+end
+
+------------------------------------------------------------------
+-- ScreenGui (nam truoc moi GUI trong CoreGui)
+------------------------------------------------------------------
+local gui = new("ScreenGui", {
+	Name = "MagetHub",
+	ResetOnSpawn = false,
+	IgnoreGuiInset = true,
+	DisplayOrder = 2147483647,
+	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+})
+pcall(function()
+	gui.Parent = CoreGui
+end)
+if gui.Parent ~= CoreGui then
+	gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+end
+
+local espFolder = new("Folder", { Name = "MagetESP" }, gui.Parent)
+
+local function layer(z)
+	return new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ZIndex = z }, gui)
+end
+local winLayer = layer(1)
+local overlayLayer = layer(2)
+local topLayer = layer(3)
+
+local closed = false
+local unlocked = false
+
+------------------------------------------------------------------
+-- ANNOUNCE
+------------------------------------------------------------------
+local annToken, annCurrent = 0, nil
+local function announce(text, kind)
+	if closed and text ~= "Script is closed!" then
+		return
+	end
+	annToken += 1
+	local my = annToken
+	if annCurrent then
+		annCurrent:Destroy()
+		annCurrent = nil
+	end
+	local col = kind == "off" and THEME.red or (kind == "info" and THEME.accent or THEME.green)
+	local box = new("CanvasGroup", {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, -50),
+		Size = UDim2.fromOffset(340, 42),
+		BackgroundColor3 = THEME.bg,
+		GroupTransparency = 1,
+	}, topLayer)
+	corner(box, 10)
+	stroke(box, col, 1.5, 0.3)
+	local bar = new("Frame", { Size = UDim2.new(0, 5, 1, 0), BackgroundColor3 = col, BorderSizePixel = 0 }, box)
+	label(box, {
+		Size = UDim2.new(1, -24, 1, 0),
+		Position = UDim2.fromOffset(18, 0),
+		Text = text,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Font = Enum.Font.GothamBold,
+		TextSize = 14,
+	})
+	annCurrent = box
+	tw(box, 0.5, { Position = UDim2.new(0.5, 0, 0, 18) }, Enum.EasingStyle.Back)
+	tw(box, 0.3, { GroupTransparency = 0 })
+	task.delay(2.4, function()
+		if my ~= annToken then
+			return
+		end
+		tw(box, 0.4, { Position = UDim2.new(0.5, 0, 0, -50) }, Enum.EasingStyle.Quint, Enum.EasingDirection.In)
+		tw(box, 0.4, { GroupTransparency = 1 })
+		task.wait(0.45)
+		if my == annToken then
+			box:Destroy()
+			annCurrent = nil
+		end
+	end)
+end
+
+------------------------------------------------------------------
+-- REGISTRY (quet workspace theo ten)
+------------------------------------------------------------------
+local registry = {}
+local catColor = {}
+for _, c in ipairs(CATS) do
+	registry[c.id] = {}
+	catColor[c.id] = c.color
+end
+local prompts = {}
+local marked = {}
+local origHold = setmetatable({}, { __mode = "k" })
+local entries = {}
+local espOn = {}
+for _, c in ipairs(CATS) do
+	entries[c.id] = {}
+end
+
+local function isPlayerChar(inst)
+	local cur = inst
+	while cur and cur ~= workspace do
+		if Players:GetPlayerFromCharacter(cur) then
+			return true
+		end
+		cur = cur.Parent
+	end
+	return false
+end
+
+local function classify(inst)
+	if inst:IsA("ProximityPrompt") then
+		if origHold[inst] == nil then
+			origHold[inst] = inst.HoldDuration
+		end
+		inst.HoldDuration = 0
+		prompts[inst] = true
+		return
+	end
+	local isModel, isPart = inst:IsA("Model"), inst:IsA("BasePart")
+	if not (isModel or isPart) then
+		return
+	end
+	local n = string.lower(inst.Name)
+	for _, c in ipairs(CATS) do
+		if (isModel or not c.modelOnly) and containsAny(n, c.kw) and not isPlayerChar(inst) then
+			registry[c.id][inst] = true
+		end
+	end
+end
+
+local function getAdornee(inst)
+	if inst:IsA("BasePart") then
+		return inst
+	end
+	if inst:IsA("Model") then
+		return inst.PrimaryPart or inst:FindFirstChildWhichIsA("BasePart")
+	end
+end
+
+local function objPos(inst)
+	if inst:IsA("Model") then
+		return inst:GetPivot().Position
+	end
+	return inst.Position
+end
+
+------------------------------------------------------------------
+-- ESP
+------------------------------------------------------------------
+local function removeEntry(id, inst)
+	local e = entries[id][inst]
+	if e then
+		e.box:Destroy()
+		e.bb:Destroy()
+		entries[id][inst] = nil
+	end
+end
+
+local function hasQualifiedAncestor(id, inst)
+	local p = inst.Parent
+	while p and p ~= workspace do
+		if registry[id][p] and getAdornee(p) then
+			return true
+		end
+		p = p.Parent
+	end
+	return false
+end
+
+local function createEntry(id, inst, part)
+	local color = catColor[id]
+	local box = new("SelectionBox", {
+		Adornee = inst,
+		Color3 = color,
+		SurfaceColor3 = color,
+		SurfaceTransparency = 0.8,
+		LineThickness = 0.04,
+	}, espFolder)
+	local bb = new("BillboardGui", {
+		Adornee = part,
+		AlwaysOnTop = true,
+		Size = UDim2.fromOffset(160, 22),
+		StudsOffset = Vector3.new(0, 3, 0),
+		LightInfluence = 0,
+		ResetOnSpawn = false,
+	}, espFolder)
+	local lbl = label(bb, {
+		Size = UDim2.fromScale(1, 1),
+		Text = inst.Name,
+		TextColor3 = color,
+		Font = Enum.Font.GothamBold,
+		TextSize = 13,
+		TextStrokeTransparency = 0.4,
+	})
+	entries[id][inst] = { box = box, bb = bb, lbl = lbl, part = part }
+end
+
+local function refreshESP()
+	for id, on in pairs(espOn) do
+		if on then
+			local ent = entries[id]
+			for inst in pairs(registry[id]) do
+				local e = ent[inst]
+				if e then
+					if not inst:IsDescendantOf(workspace) or not e.part.Parent then
+						removeEntry(id, inst)
+					end
+				else
+					local part = getAdornee(inst)
+					if part and inst:IsDescendantOf(workspace) and not hasQualifiedAncestor(id, inst) then
+						createEntry(id, inst, part)
+					end
+				end
+			end
+		end
+	end
+end
+
+local function clearESP(id)
+	for inst in pairs(entries[id]) do
+		removeEntry(id, inst)
+	end
+end
+
+local function setESP(id, on, silent)
+	espOn[id] = on
+	if on then
+		refreshESP()
+	else
+		clearESP(id)
+	end
+	if not silent then
+		announce(("ESP %s is %s!"):format(id, on and "active" or "off"), on and "on" or "off")
+	end
+end
+
+local acc1, acc2 = 0, 0
+bind(RunService.Heartbeat, function(dt)
+	acc1 += dt
+	acc2 += dt
+	if acc2 >= 0.2 then
+		acc2 = 0
+		local hrp = getHRP()
+		if hrp then
+			for _, ent in pairs(entries) do
+				for inst, e in pairs(ent) do
+					if e.part.Parent then
+						local d = (e.part.Position - hrp.Position).Magnitude
+						e.lbl.Text = inst.Name .. " [" .. math.floor(d) .. " st]"
+					end
+				end
+			end
+		end
+	end
+	if acc1 >= 1.5 then
+		acc1 = 0
+		refreshESP()
+		for p in pairs(prompts) do
+			if p.Parent and p.HoldDuration ~= 0 then
+				p.HoldDuration = 0
+			end
+		end
+	end
+end)
+
+bind(workspace.DescendantAdded, classify)
+bind(workspace.DescendantRemoving, function(inst)
+	for _, c in ipairs(CATS) do
+		registry[c.id][inst] = nil
+		removeEntry(c.id, inst)
+	end
+	prompts[inst] = nil
+	marked[inst] = nil
+end)
+
+local function scan()
+	local desc = workspace:GetDescendants()
+	for i, inst in ipairs(desc) do
+		if closed then
+			return
+		end
+		classify(inst)
+		if i % 1500 == 0 then
+			task.wait()
+		end
+	end
+end
+
+------------------------------------------------------------------
+-- TELEPORT / RECYCLER
+------------------------------------------------------------------
+local function tpTo(pos)
+	local hrp = getHRP()
+	if not hrp then
+		return false
+	end
+	local rot = hrp.CFrame - hrp.CFrame.Position
+	hrp.CFrame = CFrame.new(pos) * rot
+	hrp.AssemblyLinearVelocity = Vector3.zero
+	return true
+end
+
+local function recyclerPoint(m)
+	local cf, size = m:GetBoundingBox()
+	return cf.Position + Vector3.new(0, size.Y / 2 + 3, 0)
+end
+
+-- nearest = true -> gan nhat, false -> xa nhat
+local function pickRecycler(nearest)
+	local hrp = getHRP()
+	if not hrp then
+		return nil
+	end
+	local named, all = {}, {}
+	for m in pairs(registry.Recycler) do
+		if m.Parent and m:IsDescendantOf(workspace) then
+			all[#all + 1] = m
+			if string.find(string.lower(m.Name), "recycler", 1, true) then
+				named[#named + 1] = m
+			end
+		end
+	end
+	local list = #named > 0 and named or all
+	local best, bestD
+	for _, m in ipairs(list) do
+		local d = (m:GetPivot().Position - hrp.Position).Magnitude
+		if not bestD or (nearest and d < bestD) or (not nearest and d > bestD) then
+			best, bestD = m, d
+		end
+	end
+	return best
+end
+
+local function teleportToRecycler()
+	if not unlocked or closed then
+		return
+	end
+	local m = pickRecycler(true)
+	if not m then
+		announce("Scrap Recycler not found!", "off")
+		return
+	end
+	if tpTo(recyclerPoint(m)) then
+		announce("Teleport to Scrap Recycle Complete!", "on")
+	end
+end
+
+bind(UIS.InputBegan, function(input, gp)
+	if gp then
+		return
+	end
+	if input.KeyCode == Enum.KeyCode.Q or input.KeyCode == Enum.KeyCode.LeftControl then
+		teleportToRecycler()
+	end
+end)
+
+------------------------------------------------------------------
+-- AUTO LOOT
+------------------------------------------------------------------
+local loot = { running = false, delay = 100, token = 0 }
+local setLootButton = function() end
+
+local function isLootPrompt(p)
+	local names, cur, i = {}, p.Parent, 0
+	while cur and cur ~= workspace and i < 3 do
+		names[#names + 1] = string.lower(cur.Name)
+		cur = cur.Parent
+		i += 1
+	end
+	local s = table.concat(names, " ")
+	return containsAny(s, CONFIG.LootKeywords) and not containsAny(s, CONFIG.LootExclude)
+end
+
+local function promptPos(p)
+	local par = p.Parent
+	if par and par:IsA("BasePart") then
+		return par.Position
+	elseif par and par:IsA("Attachment") then
+		return par.WorldPosition
+	end
+	local part = p:FindFirstAncestorWhichIsA("BasePart")
+	if part then
+		return part.Position
+	end
+	local model = p:FindFirstAncestorWhichIsA("Model")
+	return model and model:GetPivot().Position
+end
+
+local function triggerPrompt(p)
+	p.HoldDuration = 0
+	p.RequiresLineOfSight = false
+	p.MaxActivationDistance = math.max(p.MaxActivationDistance, 12)
+	if typeof(fireproximityprompt) == "function" then
+		pcall(fireproximityprompt, p)
+	else
+		pcall(function()
+			p:InputHoldBegin()
+			task.wait()
+			p:InputHoldEnd()
+		end)
+	end
+end
+
+local function stopLoot(silent)
+	if not loot.running then
+		return
+	end
+	loot.running = false
+	loot.token += 1
+	table.clear(marked)
+	setLootButton(false)
+	if not silent then
+		announce("Auto Loot is stopped!", "off")
+	end
+end
+
+local function startLoot()
+	if loot.running or closed then
+		return
+	end
+	loot.running = true
+	loot.token += 1
+	local my = loot.token
+	setLootButton(true)
+	announce("Auto Loot is active!", "on")
+	task.spawn(function()
+		local finished = false
+		while loot.running and loot.token == my and not closed do
+			local targets = {}
+			for p in pairs(prompts) do
+				if p.Parent and p.Enabled and not marked[p] and p:IsDescendantOf(workspace) and isLootPrompt(p) then
+					targets[#targets + 1] = p
+				end
+			end
+			if #targets == 0 then
+				finished = true
+				break
+			end
+			local p = targets[math.random(#targets)]
+			marked[p] = true
+			local pos = promptPos(p)
+			if pos and getHRP() then
+				tpTo(pos + Vector3.new(0, CONFIG.LootHeight, 0))
+				task.wait(0.05)
+				triggerPrompt(p)
+			end
+			task.wait(math.max(loot.delay / 1000, 0.03))
+		end
+		if loot.token ~= my then
+			return
+		end
+		table.clear(marked)
+		loot.running = false
+		setLootButton(false)
+		if finished and not closed then
+			announce("Auto Loot is done!", "on")
+		end
+	end)
+end
+
+------------------------------------------------------------------
+-- SHIELD
+------------------------------------------------------------------
+local shield = { on = false, last = 0, conn = nil, part = nil, lastWarn = 0 }
+
+local function wallHit(origin, dir, len)
+	local ignore = { LocalPlayer.Character, shield.part, workspace.CurrentCamera }
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = ignore
+	for _ = 1, 6 do
+		local r = workspace:Raycast(origin, dir * len, params)
+		if not r then
+			return false
+		end
+		local inst = r.Instance
+		if inst.CanCollide and not (inst.Parent and inst.Parent:FindFirstChildOfClass("Humanoid")) then
+			return true
+		end
+		table.insert(ignore, inst)
+		params.FilterDescendantsInstances = ignore
+	end
+	return false
+end
+
+local function shieldStep()
+	local hrp = getHRP()
+	if not hrp or not shield.part then
+		return
+	end
+	shield.part.CFrame = hrp.CFrame
+	if os.clock() - shield.last < 0.3 then
+		return
+	end
+	local best, bestD, bestPos
+	for m in pairs(registry.Monster) do
+		if m.Parent and m:IsDescendantOf(workspace) then
+			local p = objPos(m)
+			local d = (hrp.Position - p).Magnitude
+			if d <= CONFIG.ShieldRadius and (not bestD or d < bestD) then
+				best, bestD, bestPos = m, d, p
+			end
+		end
+	end
+	if not best then
+		return
+	end
+	local flat = Vector3.new(hrp.Position.X - bestPos.X, 0, hrp.Position.Z - bestPos.Z)
+	if flat.Magnitude < 0.05 then
+		flat = Vector3.new(-hrp.CFrame.LookVector.X, 0, -hrp.CFrame.LookVector.Z)
+	end
+	local dir = flat.Unit
+	local dist = math.random() * (CONFIG.PushMax - CONFIG.PushMin) + CONFIG.PushMin
+	shield.last = os.clock()
+	if wallHit(hrp.Position, dir, dist + 2) then
+		-- bi dan vao tuong -> chay den Scrap Recycler xa nhat
+		local m = pickRecycler(false)
+		if m then
+			tpTo(recyclerPoint(m))
+			shield.last = os.clock() + 0.7
+			if os.clock() - shield.lastWarn > 3 then
+				shield.lastWarn = os.clock()
+				announce("Shield: cornered! Teleported to Scrap Recycler!", "info")
+			end
+		end
+	else
+		tpTo(hrp.Position + dir * dist)
+	end
+end
+
+local function setShield(v, silent)
+	if v == shield.on then
+		return
+	end
+	shield.on = v
+	if v then
+		shield.part = new("Part", {
+			Name = "MagetShield",
+			Shape = Enum.PartType.Ball,
+			Size = Vector3.one * CONFIG.ShieldRadius * 2,
+			Material = Enum.Material.ForceField,
+			Color = Color3.fromRGB(110, 190, 255),
+			Transparency = 0.75,
+			Anchored = true,
+			CanCollide = false,
+			CanQuery = false,
+			CanTouch = false,
+			CastShadow = false,
+		}, workspace.CurrentCamera)
+		shield.conn = RunService.Heartbeat:Connect(shieldStep)
+	else
+		if shield.conn then
+			shield.conn:Disconnect()
+			shield.conn = nil
+		end
+		if shield.part then
+			shield.part:Destroy()
+			shield.part = nil
+		end
+	end
+	if not silent then
+		announce(v and "Shield is active!" or "Shield is off!", v and "on" or "off")
+	end
+end
+
+------------------------------------------------------------------
+-- WINDOW FACTORY
+------------------------------------------------------------------
+local windows = {}
+local zCounter = 1
+local askClose
+
+local function makeWindow(title, pos, w, h)
+	local root = new("CanvasGroup", {
+		Name = title,
+		Position = pos,
+		Size = UDim2.fromOffset(w, h),
+		BackgroundColor3 = THEME.bg,
+		GroupTransparency = 1,
+		Active = true,
+		Visible = false,
+	}, winLayer)
+	corner(root, 12)
+	stroke(root, THEME.accent, 1.2, 0.5)
+	local scale = new("UIScale", { Scale = 0.8 }, root)
+
+	local top = new("Frame", { Size = UDim2.new(1, 0, 0, 34), BackgroundColor3 = THEME.top, BorderSizePixel = 0 }, root)
+	label(top, {
+		Size = UDim2.new(1, -80, 1, 0),
+		Position = UDim2.fromOffset(12, 0),
+		Text = title,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Font = Enum.Font.GothamBold,
+		TextSize = 14,
+	})
+	local function topBtn(text, x, base, hover)
+		local b = new("TextButton", {
+			Size = UDim2.fromOffset(24, 22),
+			Position = UDim2.new(1, x, 0.5, -11),
+			BackgroundColor3 = base,
+			Text = text,
+			Font = Enum.Font.GothamBold,
+			TextSize = 12,
+			TextColor3 = THEME.text,
+		}, top)
+		corner(b, 6)
+		styleButton(b, base, hover)
+		return b
+	end
+	local cbtn = topBtn("▼", -58, THEME.off, Color3.fromRGB(85, 85, 108))
+	local xbtn = topBtn("X", -30, THEME.red, THEME.redHover)
+
+	local content = new("Frame", {
+		Position = UDim2.fromOffset(0, 34),
+		Size = UDim2.new(1, 0, 1, -34),
+		BackgroundTransparency = 1,
+	}, root)
+
+	local collapsed = false
+	cbtn.MouseButton1Click:Connect(function()
+		collapsed = not collapsed
+		cbtn.Text = collapsed and "▲" or "▼"
+		tw(root, 0.4, { Size = UDim2.fromOffset(w, collapsed and 34 or h) }, Enum.EasingStyle.Quint)
+	end)
+	xbtn.MouseButton1Click:Connect(function()
+		askClose()
+	end)
+
+	-- keo tha
+	local dragging, startMouse, startPos
+	top.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+			startMouse = input.Position
+			startPos = root.Position
+			zCounter += 1
+			root.ZIndex = zCounter
+		end
+	end)
+	bind(UIS.InputChanged, function(input)
+		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+			local d = input.Position - startMouse
+			tw(root, 0.07, {
+				Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y),
+			}, Enum.EasingStyle.Quad)
+		end
+	end)
+	bind(UIS.InputEnded, function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = false
+		end
+	end)
+
+	local win = { root = root, content = content }
+	function win.open(delay)
+		task.delay(delay or 0, function()
+			if closed then
+				return
+			end
+			root.Visible = true
+			tw(scale, 0.55, { Scale = 1 }, Enum.EasingStyle.Back)
+			tw(root, 0.4, { GroupTransparency = 0 })
+		end)
+	end
+	function win.close()
+		tw(scale, 0.35, { Scale = 0.8 }, Enum.EasingStyle.Back, Enum.EasingDirection.In)
+		tw(root, 0.35, { GroupTransparency = 1 })
+	end
+	windows[#windows + 1] = win
+	return win
+end
+
+local function makeToggle(parent, text, dotColor, cb, order)
+	local row = new("Frame", { Size = UDim2.new(1, -10, 0, 36), BackgroundColor3 = THEME.row, LayoutOrder = order or 0 }, parent)
+	corner(row, 8)
+	local x = 12
+	if dotColor then
+		local dot = new("Frame", { Size = UDim2.fromOffset(9, 9), Position = UDim2.new(0, 10, 0.5, -4.5), BackgroundColor3 = dotColor }, row)
+		corner(dot, 5)
+		x = 28
+	end
+	label(row, { Size = UDim2.new(1, -90, 1, 0), Position = UDim2.fromOffset(x, 0), Text = text, TextXAlignment = Enum.TextXAlignment.Left })
+	local sw = new("Frame", { Size = UDim2.fromOffset(40, 20), Position = UDim2.new(1, -50, 0.5, -10), BackgroundColor3 = THEME.off }, row)
+	corner(sw, 10)
+	local knob = new("Frame", { Size = UDim2.fromOffset(14, 14), Position = UDim2.fromOffset(3, 3), BackgroundColor3 = Color3.new(1, 1, 1) }, sw)
+	corner(knob, 7)
+	local btn = new("TextButton", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = "" }, row)
+	local state = false
+	local function set(v, silent)
+		state = v
+		tw(sw, 0.25, { BackgroundColor3 = v and THEME.accent or THEME.off })
+		tw(knob, 0.35, { Position = v and UDim2.fromOffset(23, 3) or UDim2.fromOffset(3, 3) }, Enum.EasingStyle.Back)
+		if not silent then
+			cb(v)
+		end
+	end
+	btn.MouseButton1Click:Connect(function()
+		set(not state)
+	end)
+	btn.MouseEnter:Connect(function()
+		tw(row, 0.2, { BackgroundColor3 = THEME.rowHover })
+	end)
+	btn.MouseLeave:Connect(function()
+		tw(row, 0.2, { BackgroundColor3 = THEME.row })
+	end)
+	return { set = set }
+end
+
+------------------------------------------------------------------
+-- BUILD MAIN GUI
+------------------------------------------------------------------
+local function buildMain()
+	-- Tinh nang 1: ESP (chi hien 5 muc, con lai cuon)
+	local hub = makeWindow("Maget Hub  |  ESP", UDim2.fromOffset(16, 56), 250, 242)
+	local scroll = new("ScrollingFrame", {
+		Position = UDim2.fromOffset(4, 4),
+		Size = UDim2.new(1, -8, 0, 196),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ScrollBarThickness = 4,
+		ScrollBarImageColor3 = THEME.accent,
+		CanvasSize = UDim2.new(),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		ScrollingDirection = Enum.ScrollingDirection.Y,
+	}, hub.content)
+	new("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, scroll)
+	local order = 0
+	for _, c in ipairs(CATS) do
+		if c.esp then
+			order += 1
+			makeToggle(scroll, "ESP " .. c.id, c.color, function(v)
+				setESP(c.id, v)
+			end, order)
+		end
+	end
+
+	-- Tinh nang 2: Teleport
+	local tp = makeWindow("Teleport", UDim2.fromOffset(286, 56), 250, 116)
+	local tpBtn = new("TextButton", {
+		Position = UDim2.fromOffset(12, 8),
+		Size = UDim2.new(1, -24, 0, 40),
+		BackgroundColor3 = THEME.accent,
+		Text = "Teleport to Scrap Recycler",
+		Font = Enum.Font.GothamBold,
+		TextSize = 14,
+		TextColor3 = Color3.new(1, 1, 1),
+	}, tp.content)
+	corner(tpBtn, 8)
+	styleButton(tpBtn, THEME.accent, THEME.accentHover)
+	tpBtn.MouseButton1Click:Connect(teleportToRecycler)
+	label(tp.content, {
+		Position = UDim2.fromOffset(12, 54),
+		Size = UDim2.new(1, -24, 0, 20),
+		Text = "Hotkey:  Q   or   Left-Ctrl",
+		TextColor3 = THEME.sub,
+		TextSize = 12,
+	})
+
+	-- Tinh nang 3: Absolute Auto
+	local auto = makeWindow("Absolute Auto", UDim2.fromOffset(286, 188), 250, 150)
+	local lootBtn = new("TextButton", {
+		Position = UDim2.fromOffset(12, 8),
+		Size = UDim2.new(1, -24, 0, 40),
+		BackgroundColor3 = THEME.accent,
+		Text = "Loot Scrap",
+		Font = Enum.Font.GothamBold,
+		TextSize = 14,
+		TextColor3 = Color3.new(1, 1, 1),
+	}, auto.content)
+	corner(lootBtn, 8)
+	local lootBase, lootHover = THEME.accent, THEME.accentHover
+	lootBtn.MouseEnter:Connect(function()
+		tw(lootBtn, 0.18, { BackgroundColor3 = lootHover })
+	end)
+	lootBtn.MouseLeave:Connect(function()
+		tw(lootBtn, 0.18, { BackgroundColor3 = lootBase })
+	end)
+	local lsc = new("UIScale", { Scale = 1 }, lootBtn)
+	lootBtn.AutoButtonColor = false
+	lootBtn.MouseButton1Down:Connect(function()
+		tw(lsc, 0.1, { Scale = 0.95 })
+	end)
+	lootBtn.MouseButton1Up:Connect(function()
+		tw(lsc, 0.3, { Scale = 1 }, Enum.EasingStyle.Back)
+	end)
+	setLootButton = function(running)
+		lootBase = running and THEME.red or THEME.accent
+		lootHover = running and THEME.redHover or THEME.accentHover
+		lootBtn.Text = running and "Stop Loot" or "Loot Scrap"
+		tw(lootBtn, 0.25, { BackgroundColor3 = lootBase })
+	end
+	lootBtn.MouseButton1Click:Connect(function()
+		if loot.running then
+			stopLoot()
+		else
+			startLoot()
+		end
+	end)
+
+	local delayLabel = label(auto.content, {
+		Position = UDim2.fromOffset(12, 58),
+		Size = UDim2.new(1, -24, 0, 18),
+		Text = "Delay Per Loot: " .. loot.delay .. " ms",
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextSize = 13,
+	})
+	local track = new("Frame", {
+		Position = UDim2.fromOffset(14, 90),
+		Size = UDim2.new(1, -28, 0, 8),
+		BackgroundColor3 = THEME.off,
+	}, auto.content)
+	corner(track, 4)
+	local fill = new("Frame", { Size = UDim2.fromScale(loot.delay / 400, 1), BackgroundColor3 = THEME.accent }, track)
+	corner(fill, 4)
+	local knob = new("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(loot.delay / 400, 0, 0.5, 0),
+		Size = UDim2.fromOffset(16, 16),
+		BackgroundColor3 = Color3.new(1, 1, 1),
+	}, track)
+	corner(knob, 8)
+	local hit = new("TextButton", {
+		Position = UDim2.new(0, 0, 0.5, -14),
+		Size = UDim2.new(1, 0, 0, 28),
+		BackgroundTransparency = 1,
+		Text = "",
+	}, track)
+	local sliding = false
+	local function setFromX(x)
+		local a = math.clamp((x - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
+		loot.delay = math.floor(a * 400 + 0.5)
+		delayLabel.Text = "Delay Per Loot: " .. loot.delay .. " ms"
+		tw(fill, 0.08, { Size = UDim2.fromScale(a, 1) }, Enum.EasingStyle.Quad)
+		tw(knob, 0.08, { Position = UDim2.new(a, 0, 0.5, 0) }, Enum.EasingStyle.Quad)
+	end
+	hit.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			sliding = true
+			tw(knob, 0.2, { Size = UDim2.fromOffset(20, 20) }, Enum.EasingStyle.Back)
+			setFromX(input.Position.X)
+		end
+	end)
+	bind(UIS.InputChanged, function(input)
+		if sliding and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+			setFromX(input.Position.X)
+		end
+	end)
+	bind(UIS.InputEnded, function(input)
+		if sliding and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+			sliding = false
+			tw(knob, 0.25, { Size = UDim2.fromOffset(16, 16) }, Enum.EasingStyle.Back)
+		end
+	end)
+
+	-- Khien
+	local sh = makeWindow("Shield", UDim2.fromOffset(286, 354), 250, 88)
+	local holder = new("Frame", { Position = UDim2.fromOffset(0, 8), Size = UDim2.new(1, 0, 0, 40), BackgroundTransparency = 1 }, sh.content)
+	new("UIListLayout", { HorizontalAlignment = Enum.HorizontalAlignment.Center }, holder)
+	makeToggle(holder, "Shield (15 studs)", Color3.fromRGB(110, 190, 255), function(v)
+		setShield(v)
+	end)
+
+	for i, w in ipairs(windows) do
+		w.open((i - 1) * 0.12)
+	end
+end
+
+------------------------------------------------------------------
+-- CLOSE SCRIPT
+------------------------------------------------------------------
+local function closeScript(instant)
+	if closed then
+		return
+	end
+	closed = true
+	stopLoot(true)
+	setShield(false, true)
+	for _, c in ipairs(CATS) do
+		if c.esp then
+			espOn[c.id] = false
+			clearESP(c.id)
+		end
+	end
+	for p, h in pairs(origHold) do
+		if p.Parent then
+			p.HoldDuration = h
+		end
+	end
+	for _, c in ipairs(conns) do
+		c:Disconnect()
+	end
+	table.clear(conns)
+	_G.MagetHubClose = nil
+	if instant then
+		espFolder:Destroy()
+		gui:Destroy()
+		return
+	end
+	closed = false
+	announce("Script is closed!", "off")
+	closed = true
+	for _, w in ipairs(windows) do
+		w.close()
+	end
+	task.wait(1.8)
+	espFolder:Destroy()
+	gui:Destroy()
+end
+_G.MagetHubClose = function()
+	closeScript(true)
+end
+
+------------------------------------------------------------------
+-- CONFIRM DIALOG: Are you sure? (Yes / No)
+------------------------------------------------------------------
+local confirmOpen = false
+askClose = function()
+	if confirmOpen or closed then
+		return
+	end
+	confirmOpen = true
+	local overlay = new("TextButton", {
+		Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = Color3.new(0, 0, 0),
+		BackgroundTransparency = 1,
+		Text = "",
+		AutoButtonColor = false,
+		Active = true,
+	}, overlayLayer)
+	tw(overlay, 0.3, { BackgroundTransparency = 0.45 })
+
+	local dlg = new("CanvasGroup", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(300, 170),
+		BackgroundColor3 = THEME.bg,
+		GroupTransparency = 1,
+	}, overlay)
+	corner(dlg, 14)
+	stroke(dlg, THEME.accent, 1.5, 0.3)
+	local ds = new("UIScale", { Scale = 0.7 }, dlg)
+	tw(ds, 0.5, { Scale = 1 }, Enum.EasingStyle.Back)
+	tw(dlg, 0.3, { GroupTransparency = 0 })
+
+	label(dlg, {
+		Position = UDim2.fromOffset(0, 18),
+		Size = UDim2.new(1, 0, 0, 28),
+		Text = "Are you sure?",
+		Font = Enum.Font.GothamBold,
+		TextSize = 22,
+	})
+	label(dlg, {
+		Position = UDim2.fromOffset(20, 52),
+		Size = UDim2.new(1, -40, 0, 40),
+		Text = "Maget Hub will close and all features will be turned off.",
+		TextColor3 = THEME.sub,
+		TextSize = 13,
+		TextWrapped = true,
+	})
+
+	local holders = {}
+	local function choice(text, base, hover, cx, delay, onClick)
+		local h = new("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromOffset(cx, 124),
+			Size = UDim2.fromOffset(110, 38),
+			BackgroundTransparency = 1,
+			Rotation = -180,
+		}, dlg)
+		local hs = new("UIScale", { Scale = 0 }, h)
+		local b = new("TextButton", {
+			Size = UDim2.fromScale(1, 1),
+			BackgroundColor3 = base,
+			Text = text,
+			Font = Enum.Font.GothamBold,
+			TextSize = 15,
+			TextColor3 = Color3.new(1, 1, 1),
+		}, h)
+		corner(b, 8)
+		styleButton(b, base, hover)
+		b.MouseButton1Click:Connect(onClick)
+		task.delay(0.25 + delay, function()
+			if h.Parent then
+				-- Enlarge + Rotate "Face in Bounce"
+				tw(hs, 0.6, { Scale = 1 }, Enum.EasingStyle.Back)
+				tw(h, 0.8, { Rotation = 0 }, Enum.EasingStyle.Bounce)
+			end
+		end)
+		holders[#holders + 1] = { h = h, s = hs }
+	end
+
+	local function dismiss(after)
+		for _, o in ipairs(holders) do
+			tw(o.s, 0.2, { Scale = 0 }, Enum.EasingStyle.Back, Enum.EasingDirection.In)
+			tw(o.h, 0.25, { Rotation = 180 })
+		end
+		tw(ds, 0.3, { Scale = 0.7 }, Enum.EasingStyle.Back, Enum.EasingDirection.In)
+		tw(dlg, 0.25, { GroupTransparency = 1 })
+		tw(overlay, 0.3, { BackgroundTransparency = 1 })
+		task.delay(0.35, function()
+			overlay:Destroy()
+			confirmOpen = false
+			if after then
+				after()
+			end
+		end)
+	end
+
+	choice("Yes", THEME.red, THEME.redHover, 85, 0, function()
+		dismiss(function()
+			closeScript()
+		end)
+	end)
+	choice("No", THEME.off, Color3.fromRGB(85, 85, 108), 215, 0.1, function()
+		dismiss()
+	end)
+end
+
+------------------------------------------------------------------
+-- KEY GATE
+------------------------------------------------------------------
+local function showKeyGate()
+	local card = new("CanvasGroup", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(320, 215),
+		BackgroundColor3 = THEME.bg,
+		GroupTransparency = 1,
+		Active = true,
+	}, winLayer)
+	corner(card, 14)
+	local st = stroke(card, THEME.accent, 1.5, 0.4)
+	local sc = new("UIScale", { Scale = 0.8 }, card)
+	tw(sc, 0.55, { Scale = 1 }, Enum.EasingStyle.Back)
+	tw(card, 0.4, { GroupTransparency = 0 })
+
+	label(card, { Position = UDim2.fromOffset(0, 14), Size = UDim2.new(1, 0, 0, 30), Text = "Maget Hub", Font = Enum.Font.GothamBold, TextSize = 24 })
+	label(card, { Position = UDim2.fromOffset(0, 46), Size = UDim2.new(1, 0, 0, 18), Text = "Enter your key to continue", TextColor3 = THEME.sub, TextSize = 13 })
+
+	local box = new("TextBox", {
+		Position = UDim2.fromOffset(20, 80),
+		Size = UDim2.new(1, -40, 0, 38),
+		BackgroundColor3 = THEME.row,
+		PlaceholderText = "Key...",
+		PlaceholderColor3 = THEME.sub,
+		Text = "",
+		ClearTextOnFocus = false,
+		Font = Enum.Font.GothamMedium,
+		TextSize = 15,
+		TextColor3 = THEME.text,
+	}, card)
+	corner(box, 8)
+	local bs = stroke(box, THEME.off, 1, 0)
+	box.Focused:Connect(function()
+		tw(bs, 0.2, { Color = THEME.accent })
+	end)
+	box.FocusLost:Connect(function()
+		tw(bs, 0.2, { Color = THEME.off })
+	end)
+
+	local verify = new("TextButton", {
+		Position = UDim2.fromOffset(20, 130),
+		Size = UDim2.new(1, -40, 0, 38),
+		BackgroundColor3 = THEME.accent,
+		Text = "Verify",
+		Font = Enum.Font.GothamBold,
+		TextSize = 15,
+		TextColor3 = Color3.new(1, 1, 1),
+	}, card)
+	corner(verify, 8)
+	styleButton(verify, THEME.accent, THEME.accentHover)
+
+	local msg = label(card, { Position = UDim2.fromOffset(0, 180), Size = UDim2.new(1, 0, 0, 20), Text = "", TextSize = 13 })
+
+	local xb = new("TextButton", {
+		Position = UDim2.new(1, -32, 0, 8),
+		Size = UDim2.fromOffset(24, 22),
+		BackgroundColor3 = THEME.red,
+		Text = "X",
+		Font = Enum.Font.GothamBold,
+		TextSize = 12,
+		TextColor3 = Color3.new(1, 1, 1),
+	}, card)
+	corner(xb, 6)
+	styleButton(xb, THEME.red, THEME.redHover)
+	xb.MouseButton1Click:Connect(function()
+		tw(sc, 0.3, { Scale = 0.8 }, Enum.EasingStyle.Back, Enum.EasingDirection.In)
+		tw(card, 0.3, { GroupTransparency = 1 })
+		task.wait(0.35)
+		closeScript(true)
+	end)
+
+	local busy = false
+	local function submit()
+		if busy then
+			return
+		end
+		local txt = box.Text:match("^%s*(.-)%s*$")
+		if txt == CONFIG.Key then
+			busy = true
+			msg.Text = "Access granted!"
+			msg.TextColor3 = THEME.green
+			tw(st, 0.3, { Color = THEME.green })
+			task.wait(0.5)
+			tw(sc, 0.4, { Scale = 0.8 }, Enum.EasingStyle.Back, Enum.EasingDirection.In)
+			tw(card, 0.35, { GroupTransparency = 1 })
+			task.wait(0.45)
+			card:Destroy()
+			unlocked = true
+			task.spawn(scan)
+			buildMain()
+			announce("Hello, " .. LocalPlayer.Name, "info")
+		else
+			msg.Text = "Invalid key!"
+			msg.TextColor3 = THEME.red
+			tw(st, 0.15, { Color = THEME.red })
+			task.delay(0.6, function()
+				if st.Parent and not busy then
+					tw(st, 0.4, { Color = THEME.accent })
+				end
+			end)
+			local base = box.Position
+			task.spawn(function()
+				for _, o in ipairs({ -8, 8, -6, 6, -3, 3, 0 }) do
+					tw(box, 0.04, { Position = base + UDim2.fromOffset(o, 0) }, Enum.EasingStyle.Sine)
+					task.wait(0.045)
+				end
+			end)
+		end
+	end
+	verify.MouseButton1Click:Connect(submit)
+	box.FocusLost:Connect(function(enter)
+		if enter then
+			submit()
+		end
+	end)
+end
+
+showKeyGate()
